@@ -30,7 +30,7 @@ spec:
         - --scheduler-name=coscheduler
         - --config=/etc/config/config.yaml
         name: coscheduler
-        image: k8s.gcr.io/scheduler-plugins/kube-scheduler:v0.18.9
+        image: ecsliu/scheduler-test:latest
         imagePullPolicy: "Always"
         livenessProbe:
           httpGet:
