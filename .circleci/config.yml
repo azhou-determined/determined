@@ -1879,6 +1879,10 @@ workflows:
               gpus-per-machine: [4]
               num-machines: [2]
 
+      - request-distributed-tests:
+          type: approval
+          filters: *upstream-feature-branch
+
       - request-k8-tests:
           type: approval
           filters: *upstream-feature-branch
@@ -1886,6 +1890,23 @@ workflows:
       - request-k8-tests-cuda-11:
           type: approval
           filters: *upstream-feature-branch
+
+      - test-e2e-aws:
+          name: test-e2e-gpu-distributed
+          context: aws
+          filters: *upstream-feature-branch
+          requires:
+            - request-distributed-tests
+            - package-and-push-system-dev
+          matrix:
+            parameters:
+              cluster-id-prefix: ["distributed"]
+              mark: ["distributed"]
+              gpu-agent-instance-type: ["p2.8xlarge"]
+              cpu-agent-instance-type: ["m5.large"]
+              max-dynamic-agents: [2]
+              slack-mentions: ["channel"]
+              slack-channel: ["ml-ag"]
 
       - test-e2e-gke:
           name: test-e2e-gke-single-gpu
@@ -1958,38 +1979,6 @@ workflows:
               parallelism: [2]
               mark: ["det_deploy_local"]
               det-version: [$CIRCLE_SHA1]
-
-  nightly:
-    triggers:
-      - schedule:
-          cron: "0 5 * * *"
-          filters:
-            branches:
-              only:
-                - master
-    jobs:
-      - test-e2e-aws:
-          name: test-e2e-gpu-nightly
-          context: aws
-          matrix:
-            parameters:
-              parallelism: [2]
-              cluster-id-prefix: ["nightly"]
-              mark: ["nightly"]
-              slack-mentions: ["channel"]
-              slack-channel: ["ml-ag"]
-      - test-e2e-aws:
-          name: test-e2e-gpu-distributed
-          context: aws
-          matrix:
-            parameters:
-              cluster-id-prefix: ["distributed"]
-              mark: ["distributed"]
-              gpu-agent-instance-type: ["p2.8xlarge"]
-              cpu-agent-instance-type: ["m5.large"]
-              max-dynamic-agents: [2]
-              slack-mentions: ["channel"]
-              slack-channel: ["ml-ag"]
 
   weekly-cuda-11:
     triggers:
