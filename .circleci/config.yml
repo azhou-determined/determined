@@ -462,20 +462,6 @@ commands:
           command: |
             gcloud container clusters delete <<parameters.cluster-id>> --quiet --region=<<parameters.region>>
 
-  terminate-gke-cluster-cuda-11:
-    parameters:
-      cluster-id:
-        type: string
-      zone:
-        type: string
-    steps:
-      # Use a run instead of `gke/delete-cluster` because circle CI orbs do not support `when`.
-      - run:
-          name: Terminate GKE Cluster
-          when: always
-          command: |
-            gcloud container clusters delete <<parameters.cluster-id>> --quiet --zone=<<parameters.zone>>
-
   setup-gke-cluster:
     parameters:
       cluster-id:
@@ -1526,9 +1512,9 @@ jobs:
       - run-e2e-tests:
           mark: <<parameters.mark>>
           master-host: ${MASTER_HOST}
-      - terminate-gke-cluster-cuda-11:
+      - terminate-gke-cluster:
           cluster-id: ${CLUSTER_ID}
-          zone: <<parameters.node-locations>>
+          region: <<parameters.region>>
       - slack/status:
           fail_only: True
           only_for_branches: master
