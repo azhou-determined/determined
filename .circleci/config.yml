@@ -1894,7 +1894,7 @@ workflows:
               mark: ["parallel"]
               parallelism: [1]
               slack-mentions: ["${SLACK_USER_ID}"]
-              machine-type: ["a2-highgpu-4g"]
+              machine-type: ["n1-standard-32"]
               gpus-per-machine: [4]
               num-machines: [2]
 
@@ -1968,7 +1968,7 @@ workflows:
               mark: ["parallel"]
               parallelism: [1]
               slack-mentions: ["${SLACK_USER_ID}"]
-              machine-type: ["a2-highgpu-4g"]
+              machine-type: ["n1-standard-32"]
               gpus-per-machine: [4]
               num-machines: [2]
 
