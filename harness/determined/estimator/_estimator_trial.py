@@ -136,7 +136,7 @@ class DeterminedControlHook(estimator.RunHook):
             "right after creating it.",
         )
         self._session = run_context.session
-        self._current_global_step = run_values.results["global_step"]
+        self._current_global_step = int(run_values.results["global_step"])
 
         self.num_batches = cast(int, self.num_batches)
         self._collect_batch_metrics(run_values)
@@ -473,32 +473,6 @@ class EstimatorTrialController(det.LoopTrialController):
             trial_inst.build_serving_input_receiver_fns(),
             context,
             env,
-            *args,
-            **kwargs,
-        )
-
-    @staticmethod
-    def from_native(context: det.NativeContext, *args: Any, **kwargs: Any) -> det.TrialController:
-        check.is_instance(
-            context,
-            estimator.EstimatorNativeContext,
-            "EstimatorTrialController needs an EstimatorSprinkleContext",
-        )
-        context = cast(estimator.EstimatorNativeContext, context)
-
-        check.true(
-            hasattr(context, "estimator")
-            and hasattr(context, "train_spec")
-            and hasattr(context, "eval_spec"),
-            "Please call TFEstimatorExperiment.train_and_evaluate().",
-        )
-
-        return EstimatorTrialController(
-            context.estimator,
-            context.train_spec,
-            context.eval_spec,
-            context.serving_input_receiver_fns,
-            context,
             *args,
             **kwargs,
         )
