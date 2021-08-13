@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"github.com/determined-ai/determined/master/internal/prom"
 	"net/http"
 	"sort"
 	"strings"
@@ -185,12 +186,14 @@ func (a *agent) containerStateChanged(ctx *actor.Context, sc aproto.ContainerSta
 		rsc.ContainerStarted = &sproto.TaskContainerStarted{
 			Addresses: sc.ContainerStarted.Addresses(),
 		}
+		prom.AssociateContainerRuntimeID(string(sc.Container.ID), sc.ContainerStarted.ContainerInfo.ID)
 	case container.Terminated:
 		ctx.Log().Infof("stopped container id: %s", sc.Container.ID)
 		delete(a.containers, sc.Container.ID)
 		rsc.ContainerStopped = &sproto.TaskContainerStopped{
 			ContainerStopped: *sc.ContainerStopped,
 		}
+		// TODO(XXX): Disassociate.
 	}
 
 	ctx.Tell(taskActor, rsc)

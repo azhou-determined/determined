@@ -341,6 +341,8 @@ func (p k8sAllocation) Summary() sproto.ContainerSummary {
 		TaskID: p.req.ID,
 		ID:     p.container.id,
 		Agent:  p.agent.handler.Address().Local(),
+		// TODO(XXX): When/where can we get the device IDs for a pod?
+		Devices: nil,
 	}
 }
 

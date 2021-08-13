@@ -2,6 +2,7 @@ package resourcemanagers
 
 import (
 	"crypto/tls"
+	"github.com/determined-ai/determined/master/internal/prom"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -136,6 +137,12 @@ func (rp *ResourcePool) allocateResources(ctx *actor.Context, req *sproto.Alloca
 	req.TaskActor.System().Tell(req.TaskActor, allocated)
 	ctx.Log().Infof("allocated resources to %s", req.TaskActor.Address())
 
+	for _, allocation := range allocated.Allocations {
+		prom.AssociateTaskContainer(string(allocated.ID), string(allocation.Summary().ID))
+		allocationSummary := allocation.Summary()
+		prom.AssociateContainerGPUs(string(allocationSummary.ID), allocationSummary.Devices...)
+	}
+
 	return true
 }
 
@@ -150,6 +157,9 @@ func (rp *ResourcePool) resourcesReleased(ctx *actor.Context, handler *actor.Ref
 		for _, allocation := range allocated.Allocations {
 			typed := allocation.(*containerAllocation)
 			typed.agent.deallocateContainer(typed.container.id)
+			prom.DisassociateTaskContainer(string(allocated.ID), string(allocation.Summary().ID))
+			allocationSummary := allocation.Summary()
+			prom.DisassociateContainerGPUs(string(allocationSummary.ID), allocationSummary.Devices...)
 		}
 	}
 	rp.taskList.RemoveTaskByHandler(handler)
@@ -362,6 +372,7 @@ func (c containerAllocation) Summary() sproto.ContainerSummary {
 		TaskID: c.req.ID,
 		ID:     c.container.id,
 		Agent:  c.agent.handler.Address().Local(),
+		Devices: c.devices,
 	}
 }
 

@@ -1,3 +1,5 @@
+enable_prometheus: true
+
 task_container_defaults:
   network_mode: host
 
