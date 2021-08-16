@@ -6,8 +6,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"github.com/determined-ai/determined/master/internal/prom"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"io"
 	"io/ioutil"
 	"net"
@@ -19,6 +17,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/determined-ai/determined/master/internal/prom"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 

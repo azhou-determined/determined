@@ -2,6 +2,7 @@ package resourcemanagers
 
 import (
 	"crypto/tls"
+
 	"github.com/determined-ai/determined/master/internal/prom"
 
 	"github.com/google/uuid"
@@ -369,9 +370,9 @@ type containerAllocation struct {
 // Summary summarizes a container allocation.
 func (c containerAllocation) Summary() sproto.ContainerSummary {
 	return sproto.ContainerSummary{
-		TaskID: c.req.ID,
-		ID:     c.container.id,
-		Agent:  c.agent.handler.Address().Local(),
+		TaskID:  c.req.ID,
+		ID:      c.container.id,
+		Agent:   c.agent.handler.Address().Local(),
 		Devices: c.devices,
 	}
 }

@@ -1,11 +1,12 @@
 package agent
 
 import (
-	"github.com/determined-ai/determined/master/internal/prom"
 	"net/http"
 	"sort"
 	"strings"
 	"syscall"
+
+	"github.com/determined-ai/determined/master/internal/prom"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"

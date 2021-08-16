@@ -12,7 +12,7 @@ var (
 	containerIDToTaskID = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Subsystem: "det",
 		Name:      "container_id_task_id",
-		Help:      `
+		Help: `
 Exposes mapping of container ID to task ID.
 
 Task ID is the ID of the task within determined. This can be a little opaque but is shown
@@ -32,7 +32,7 @@ This is useful to join in on metrics from those monitoring tools (e.g. cAdvisor)
 
 	gpuUUIDToContainerID = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Subsystem: "det",
-		Name: "gpu_uuid_container_id",
+		Name:      "gpu_uuid_container_id",
 		Help: `
 Exposes mapping of task name to container ID to GPU uuid.
 
