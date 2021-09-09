@@ -1,5 +1,5 @@
 import { ExclamationCircleOutlined } from '@ant-design/icons';
-import { Button, Modal } from 'antd';
+import { Modal } from 'antd';
 import { ColumnType, FilterDropdownProps, SorterResult } from 'antd/es/table/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -28,7 +28,7 @@ import useSettings from 'hooks/useSettings';
 import { paths } from 'routes/utils';
 import { getCommands, getNotebooks, getShells, getTensorboards, killTask } from 'services/api';
 import { ShirtSize } from 'themes';
-import { CommandState, CommandTask, CommandType } from 'types';
+import { ExperimentAction as Action, CommandState, CommandTask, CommandType } from 'types';
 import { isEqual } from 'utils/data';
 import {
   alphanumericSorter, commandStateSorter, numericSorter, stringTimeSorter,
@@ -64,7 +64,6 @@ const TaskList: React.FC = () => {
   const [ canceler ] = useState(new AbortController());
   const [ tasks, setTasks ] = useState<CommandTask[] | undefined>(undefined);
   const [ sourcesModal, setSourcesModal ] = useState<SourceInfo>();
-  const [ selectedRowKeys, setSelectedRowKeys ] = useState<string[]>([]);
 
   const {
     activeSettings,
@@ -99,12 +98,12 @@ const TaskList: React.FC = () => {
   }, [ loadedTasks ]);
 
   const selectedTasks = useMemo(() => {
-    return selectedRowKeys.map(key => taskMap[key]);
-  }, [ selectedRowKeys, taskMap ]);
+    return (settings.row || []).map(id => taskMap[id]).filter(task => !!task);
+  }, [ settings.row, taskMap ]);
 
   const hasKillable = useMemo(() => {
-    for (let i = 0; i < selectedTasks.length; i++) {
-      if (isTaskKillable(selectedTasks[i])) return true;
+    for (const task of selectedTasks) {
+      if (isTaskKillable(task)) return true;
     }
     return false;
   }, [ selectedTasks ]);
@@ -146,13 +145,11 @@ const TaskList: React.FC = () => {
   const tableSearchIcon = useCallback(() => <Icon name="search" size="tiny" />, []);
 
   const handleNameSearchApply = useCallback((newSearch: string) => {
-    setSelectedRowKeys([]);
-    updateSettings({ search: newSearch || undefined });
+    updateSettings({ row: undefined, search: newSearch || undefined });
   }, [ updateSettings ]);
 
   const handleNameSearchReset = useCallback(() => {
-    setSelectedRowKeys([]);
-    updateSettings({ search: undefined });
+    updateSettings({ row: undefined, search: undefined });
   }, [ updateSettings ]);
 
   const nameFilterSearch = useCallback((filterProps: FilterDropdownProps) => (
@@ -165,13 +162,14 @@ const TaskList: React.FC = () => {
   ), [ handleNameSearchApply, handleNameSearchReset, settings.search ]);
 
   const handleTypeFilterApply = useCallback((types: string[]) => {
-    setSelectedRowKeys([]);
-    updateSettings({ type: types.length !== 0 ? types as CommandType[] : undefined });
+    updateSettings({
+      row: undefined,
+      type: types.length !== 0 ? types as CommandType[] : undefined,
+    });
   }, [ updateSettings ]);
 
   const handleTypeFilterReset = useCallback(() => {
-    setSelectedRowKeys([]);
-    updateSettings({ type: undefined });
+    updateSettings({ row: undefined, type: undefined });
   }, [ updateSettings ]);
 
   const typeFilterDropdown = useCallback((filterProps: FilterDropdownProps) => (
@@ -185,13 +183,14 @@ const TaskList: React.FC = () => {
   ), [ handleTypeFilterApply, handleTypeFilterReset, settings.type ]);
 
   const handleStateFilterApply = useCallback((states: string[]) => {
-    setSelectedRowKeys([]);
-    updateSettings({ state: states.length !== 0 ? states as CommandState[] : undefined });
+    updateSettings({
+      row: undefined,
+      state: states.length !== 0 ? states as CommandState[] : undefined,
+    });
   }, [ updateSettings ]);
 
   const handleStateFilterReset = useCallback(() => {
-    setSelectedRowKeys([]);
-    updateSettings({ state: undefined });
+    updateSettings({ row: undefined, state: undefined });
   }, [ updateSettings ]);
 
   const stateFilterDropdown = useCallback((filterProps: FilterDropdownProps) => (
@@ -204,13 +203,14 @@ const TaskList: React.FC = () => {
   ), [ handleStateFilterApply, handleStateFilterReset, settings.state ]);
 
   const handleUserFilterApply = useCallback((users: string[]) => {
-    setSelectedRowKeys([]);
-    updateSettings({ user: users.length !== 0 ? users : undefined });
+    updateSettings({
+      row: undefined,
+      user: users.length !== 0 ? users : undefined,
+    });
   }, [ updateSettings ]);
 
   const handleUserFilterReset = useCallback(() => {
-    setSelectedRowKeys([]);
-    updateSettings({ user: undefined });
+    updateSettings({ row: undefined, user: undefined });
   }, [ updateSettings ]);
 
   const userFilterDropdown = useCallback((filterProps: FilterDropdownProps) => (
@@ -379,7 +379,7 @@ const TaskList: React.FC = () => {
        * Deselect selected rows since their states may have changed where they
        * are no longer part of the filter criteria.
        */
-      setSelectedRowKeys([]);
+      updateSettings({ row: undefined });
 
       // Refetch task list to get updates based on batch action.
       fetchAll();
@@ -394,9 +394,9 @@ const TaskList: React.FC = () => {
         type: ErrorType.Server,
       });
     }
-  }, [ fetchAll, selectedTasks ]);
+  }, [ fetchAll, selectedTasks, updateSettings ]);
 
-  const handleConfirmation = useCallback(() => {
+  const showConfirmation = useCallback(() => {
     Modal.confirm({
       content: `
         Are you sure you want to kill
@@ -409,10 +409,14 @@ const TaskList: React.FC = () => {
     });
   }, [ handleBatchKill ]);
 
-  const handleTableChange = useCallback((tablePagination, tableFilters, sorter) => {
-    if (Array.isArray(sorter)) return;
+  const handleBatchAction = useCallback((action?: string) => {
+    if (action === Action.Kill) showConfirmation();
+  }, [ showConfirmation ]);
 
-    const { columnKey, order } = sorter as SorterResult<CommandTask>;
+  const handleTableChange = useCallback((tablePagination, tableFilters, tableSorter) => {
+    if (Array.isArray(tableSorter)) return;
+
+    const { columnKey, order } = tableSorter as SorterResult<CommandTask>;
     if (!columnKey || !columns.find(column => column.key === columnKey)) return;
 
     const newSettings = {
@@ -426,7 +430,9 @@ const TaskList: React.FC = () => {
     updateSettings(newSettings, shouldPush);
   }, [ columns, settings, updateSettings ]);
 
-  const handleTableRowSelect = useCallback(rowKeys => setSelectedRowKeys(rowKeys), []);
+  const handleTableRowSelect = useCallback(rowKeys => {
+    updateSettings({ row: rowKeys });
+  }, [ updateSettings ]);
 
   usePolling(fetchAll);
 
@@ -435,8 +441,8 @@ const TaskList: React.FC = () => {
   }, [ canceler ]);
 
   const clearSelected = useCallback(() => {
-    setSelectedRowKeys([]);
-  }, []);
+    updateSettings({ row: undefined });
+  }, [ updateSettings ]);
 
   return (
     <Page
@@ -444,13 +450,12 @@ const TaskList: React.FC = () => {
       options={<FilterCounter activeFilterCount={filterCount} onReset={resetFilters} /> }
       title="Tasks">
       <div className={css.base}>
-        <TableBatch selectedRowCount={selectedRowKeys.length} onClear={clearSelected}>
-          <Button
-            danger
-            disabled={!hasKillable}
-            type="primary"
-            onClick={handleConfirmation}>Kill</Button>
-        </TableBatch>
+        <TableBatch
+          actions={[ { disabled: !hasKillable, label: Action.Kill, value: Action.Kill } ]}
+          selectedRowCount={(settings.row || []).length}
+          onAction={handleBatchAction}
+          onClear={clearSelected}
+        />
         <ResponsiveTable<CommandTask>
           columns={columns}
           dataSource={filteredTasks}
@@ -464,7 +469,7 @@ const TaskList: React.FC = () => {
           rowSelection={{
             onChange: handleTableRowSelect,
             preserveSelectedRowKeys: true,
-            selectedRowKeys,
+            selectedRowKeys: settings.row,
           }}
           showSorterTooltip={false}
           size="small"

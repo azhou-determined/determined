@@ -411,7 +411,7 @@ func (a *apiServer) ActivateExperiment(
 		return nil, err
 	}
 
-	addr := experimentsAddr.Child(req.Id).String()
+	addr := experimentsAddr.Child(req.Id)
 	switch err = a.actorRequest(addr, req, &resp); {
 	case status.Code(err) == codes.NotFound:
 		return nil, status.Error(codes.FailedPrecondition, "experiment in terminal state")
@@ -429,7 +429,7 @@ func (a *apiServer) PauseExperiment(
 		return nil, err
 	}
 
-	addr := experimentsAddr.Child(req.Id).String()
+	addr := experimentsAddr.Child(req.Id)
 	switch err = a.actorRequest(addr, req, &resp); {
 	case status.Code(err) == codes.NotFound:
 		return nil, status.Error(codes.FailedPrecondition, "experiment in terminal state")
@@ -447,7 +447,7 @@ func (a *apiServer) CancelExperiment(
 		return nil, err
 	}
 
-	addr := experimentsAddr.Child(req.Id).String()
+	addr := experimentsAddr.Child(req.Id)
 	err = a.actorRequest(addr, req, &resp)
 	if status.Code(err) == codes.NotFound {
 		return &apiv1.CancelExperimentResponse{}, nil
@@ -463,7 +463,7 @@ func (a *apiServer) KillExperiment(
 		return nil, err
 	}
 
-	addr := experimentsAddr.Child(req.Id).String()
+	addr := experimentsAddr.Child(req.Id)
 	err = a.actorRequest(addr, req, &resp)
 	if status.Code(err) == codes.NotFound {
 		return &apiv1.KillExperimentResponse{}, nil
@@ -698,7 +698,7 @@ func (a *apiServer) CreateExperiment(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create experiment: %s", err)
 	}
-	a.m.system.ActorOf(actor.Addr("experiments", e.ID), e)
+	a.m.system.ActorOf(experimentsAddr.Child(e.ID), e)
 
 	protoExp, err := a.getExperiment(e.ID)
 	if err != nil {
