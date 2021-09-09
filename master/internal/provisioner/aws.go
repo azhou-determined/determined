@@ -235,6 +235,7 @@ func (c *awsCluster) launchOnDemand(ctx *actor.Context, instanceNum int) {
 		return
 	}
 	launched := c.newInstances(instances.Instances)
+
 	ctx.Log().Infof(
 		"launched %d/%d EC2 instances: %s",
 		len(launched),
@@ -271,6 +272,7 @@ func (c *awsCluster) newInstances(input []*ec2.Instance) []*Instance {
 			AgentName:  c.agentNameFromInstance(inst),
 			State:      c.stateFromEC2State(inst.State),
 		})
+
 	}
 	return output
 }

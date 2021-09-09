@@ -139,8 +139,10 @@ func (rp *ResourcePool) allocateResources(ctx *actor.Context, req *sproto.Alloca
 	ctx.Log().Infof("allocated resources to %s", req.TaskActor.Address())
 
 	for _, allocation := range allocated.Allocations {
+
 		prom.AssociateTaskContainer(string(allocated.ID), string(allocation.Summary().ID))
 		allocationSummary := allocation.Summary()
+		prom.AssociateTaskActor(string(allocated.ID), req.TaskActor.Address().String())
 		prom.AssociateContainerGPUs(string(allocationSummary.ID), allocationSummary.Devices...)
 	}
 
@@ -160,6 +162,7 @@ func (rp *ResourcePool) resourcesReleased(ctx *actor.Context, handler *actor.Ref
 			typed.agent.deallocateContainer(typed.container.id)
 			prom.DisassociateTaskContainer(string(allocated.ID), string(allocation.Summary().ID))
 			allocationSummary := allocation.Summary()
+			prom.DisassociateTaskActor(string(allocated.ID), handler.Address().String())
 			prom.DisassociateContainerGPUs(string(allocationSummary.ID), allocationSummary.Devices...)
 		}
 	}

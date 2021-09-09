@@ -3,10 +3,11 @@ package internal
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
-	"time"
-
+	"github.com/determined-ai/determined/master/internal/prom"
 	"github.com/hashicorp/go-multierror"
+	"sort"
+	"strconv"
+	"time"
 
 	"github.com/determined-ai/determined/proto/pkg/trialv1"
 
@@ -963,6 +964,10 @@ func (t *trial) processContainerTerminated(
 		pendingGracefulTermination: t.PendingGracefulTermination,
 		needsCheckpoint:            t.sequencer.PrecloseCheckpointWorkload() != nil,
 	}
+
+	prom.DisassociateContainerExperimentID(msg.Container.ID.String(),
+		strconv.Itoa(t.experiment.ID),
+		strconv.Itoa(t.id))
 
 	_, ok := t.containers[msg.Container.ID]
 	delete(t.containers, msg.Container.ID)

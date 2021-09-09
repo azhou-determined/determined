@@ -425,7 +425,7 @@ func (m *Master) startServers(ctx context.Context, cert *tls.Certificate) error 
 		}()
 	}
 	start("gRPC server", func() error {
-		srv := grpcutil.NewGRPCServer(m.db, &apiServer{m: m}, m.config.InternalConfig.PrometheusEnabled)
+		srv := grpcutil.NewGRPCServer(m.db, &apiServer{m: m}, m.config.EnablePrometheus)
 		// We should defer srv.Stop() here, but cmux does not unblock accept calls when underlying
 		// listeners close and grpc-go depends on cmux unblocking and closing, Stop() blocks
 		// indefinitely when using cmux.

@@ -2,15 +2,16 @@ package internal
 
 import (
 	"fmt"
+	"github.com/determined-ai/determined/master/internal/prom"
 	"net/http"
-
-	"github.com/gorilla/websocket"
-	"github.com/labstack/echo/v4"
-	"github.com/pkg/errors"
 
 	"github.com/determined-ai/determined/master/internal/api"
 	"github.com/determined-ai/determined/master/pkg/actor"
 	cproto "github.com/determined-ai/determined/master/pkg/container"
+	"github.com/gorilla/websocket"
+	"github.com/labstack/echo/v4"
+	"github.com/pkg/errors"
+	"strconv"
 )
 
 func (m *Master) postTrialKill(c echo.Context) (interface{}, error) {
@@ -76,6 +77,9 @@ func (m *Master) trialWebSocket(socket *websocket.Conn, c echo.Context) error {
 
 	c.Logger().Infof("new connection from container %v trial %d (experiment %d) at %v",
 		args.ContainerID, args.TrialID, args.ExperimentID, socket.RemoteAddr())
+
+	prom.AssociateContainerExperimentID(args.ContainerID, strconv.Itoa(args.ExperimentID),
+		strconv.Itoa(args.TrialID))
 
 	resp := m.system.AskAt(actor.Addr("experiments", args.ExperimentID),
 		getTrial{trialID: args.TrialID})

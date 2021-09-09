@@ -38,6 +38,7 @@ type Instance struct {
 	LaunchTime time.Time
 	AgentName  string
 	State      InstanceState
+	Address    string
 }
 
 func (inst Instance) String() string {

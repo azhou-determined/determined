@@ -61,6 +61,7 @@ func DefaultConfig() *Config {
 			CoresPerWorker: 1,
 			MaxTrees:       100,
 		},
+		EnablePrometheus: true,
 		ResourceConfig: resourcemanagers.DefaultResourceConfig(),
 	}
 }

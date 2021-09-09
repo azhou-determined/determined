@@ -156,6 +156,7 @@ func (a *agent) handleIncomingWSMessage(ctx *actor.Context, msg aproto.MasterMes
 		ctx.Tell(a.resourcePool, sproto.AddAgent{Agent: ctx.Self(), Label: msg.AgentStarted.Label})
 		ctx.Tell(a.slots, *msg.AgentStarted)
 		a.label = msg.AgentStarted.Label
+		prom.AddAgentFileSDConfig(ctx, a.uuid.String(), a.address, a.resourcePoolName, a.label)
 	case msg.ContainerStateChanged != nil:
 		a.containerStateChanged(ctx, *msg.ContainerStateChanged)
 	case msg.ContainerLog != nil:

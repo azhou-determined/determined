@@ -127,3 +127,5 @@ db:
 ## Determined.
 # telemetry:
 #   enabled: true
+
+enable_prometheus: true
