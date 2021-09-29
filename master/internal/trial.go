@@ -4,14 +4,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"github.com/determined-ai/determined/master/internal/prom"
-	"github.com/hashicorp/go-multierror"
-	"sort"
 	"time"
 
 	"github.com/determined-ai/determined/master/internal/task"
-	"github.com/determined-ai/determined/proto/pkg/trialv1"
-
 	"github.com/determined-ai/determined/master/pkg/ptrs"
 
 	"github.com/pkg/errors"

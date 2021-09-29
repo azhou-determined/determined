@@ -140,7 +140,7 @@ func (rp *ResourcePool) allocateResources(ctx *actor.Context, req *sproto.Alloca
 	req.TaskActor.System().Tell(req.TaskActor, allocated)
 	ctx.Log().Infof("allocated resources to %s", req.TaskActor.Address())
 
-	for _, allocation := range allocated.Allocations {
+	for _, allocation := range allocated.Reservations {
 
 		prom.AssociateTaskContainer(string(allocated.ID), string(allocation.Summary().ID))
 		allocationSummary := allocation.Summary()

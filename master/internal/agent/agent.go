@@ -317,7 +317,7 @@ func (a *agent) containerStateChanged(ctx *actor.Context, sc aproto.ContainerSta
 		rsc.ContainerStopped = &sproto.TaskContainerStopped{
 			ContainerStopped: *sc.ContainerStopped,
 		}
-		// TODO(XXX): Disassociate.
+		prom.DisassociateContainerRuntimeID(string(sc.Container.ID), sc.ContainerStarted.ContainerInfo.ID)
 	}
 
 	ctx.Tell(taskActor, rsc)
