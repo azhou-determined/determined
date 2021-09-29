@@ -25,7 +25,7 @@ def format_validation(validation: Dict[str, Any]) -> List[Any]:
 # TODO(neilc): Report more info about checkpoints and validations.
 def format_checkpoint(checkpoint: Dict[str, Any]) -> List[Any]:
     if not checkpoint:
-        return [None, None]
+        return [None, None, None]
 
     if checkpoint["state"] in (constants.COMPLETED, constants.DELETED):
         return [
@@ -46,9 +46,10 @@ def render_checkpoint(checkpoint: experimental.Checkpoint, path: Optional[str] =
 
     # Print information about the downloaded step/checkpoint.
     table = [
+        ["Experiment ID", checkpoint.experiment_id],
+        ["Trial ID", checkpoint.trial_id],
         ["Batch #", checkpoint.batch_number],
-        ["Start Time", render.format_time(checkpoint.start_time)],
-        ["End Time", render.format_time(checkpoint.end_time)],
+        ["Report Time", render.format_time(checkpoint.end_time)],
         ["Checkpoint UUID", checkpoint.uuid],
         ["Validation Metrics", json.dumps(checkpoint.validation["metrics"], indent=4)],
         ["Metadata", json.dumps(checkpoint.metadata or {}, indent=4)],
@@ -60,7 +61,7 @@ def render_checkpoint(checkpoint: experimental.Checkpoint, path: Optional[str] =
 
 
 @authentication.required
-def list(args: Namespace) -> None:
+def list_checkpoints(args: Namespace) -> None:
     params = {}
     if args.best is not None:
         if args.best < 0:

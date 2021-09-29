@@ -33,11 +33,19 @@ export interface Auth {
   user?: DetailedUser;
 }
 
+export interface SsoProvider {
+  name: string;
+  ssoUrl: string;
+}
+
 export interface DeterminedInfo {
   clusterId: string;
   clusterName: string;
+  externalLoginUri?: string;
+  externalLogoutUri?: string;
   isTelemetryEnabled: boolean;
   masterId: string;
+  ssoProviders?: SsoProvider[];
   version: string;
 }
 
@@ -109,8 +117,11 @@ export interface ClusterOverviewResource {
 
 export type ClusterOverview = Record<ResourceType, ClusterOverviewResource>;
 
-export interface StartEndTimes {
+export interface EndTimes {
   endTime?: string;
+}
+
+export interface StartEndTimes extends EndTimes {
   startTime: string;
 }
 
@@ -343,7 +354,7 @@ export interface MetricName {
   type: MetricType;
 }
 
-export interface Checkpoint extends StartEndTimes {
+export interface Checkpoint extends EndTimes {
   resources?: Record<string, number>;
   state: CheckpointState;
   trialId: number;
@@ -351,7 +362,7 @@ export interface Checkpoint extends StartEndTimes {
   validationMetric? : number;
 }
 
-export interface Workload extends StartEndTimes {
+export interface Workload extends EndTimes {
   totalBatches: number;
 }
 
@@ -368,8 +379,6 @@ export interface CheckpointWorkloadExtended extends CheckpointWorkload {
 
 export interface MetricsWorkload extends Workload {
   metrics?: Record<string, number>;
-  numInputs?: number;
-  state: RunState;
 }
 export interface WorkloadWrapper {
   checkpoint?: CheckpointWorkload;
@@ -387,11 +396,6 @@ export interface Step extends WorkloadWrapper, StartEndTimes {
 export interface CheckpointDetail extends Checkpoint {
   batch: number;
   experimentId?: number;
-}
-
-export interface ValidationMetrics {
-  numInputs: number;
-  validationMetrics: Record<string, number>;
 }
 
 export interface TrialPagination extends WithPagination {
@@ -413,6 +417,7 @@ export interface TrialItem extends StartEndTimes {
 }
 
 export interface TrialDetails extends TrialItem {
+  runnerState?: string;
   workloads: WorkloadWrapper[];
 }
 
