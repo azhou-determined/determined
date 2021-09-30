@@ -5,12 +5,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/determined-ai/determined/master/internal/prom"
 	"math"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/determined-ai/determined/master/internal/prom"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -610,7 +611,6 @@ func (a *apiServer) PatchExperiment(
 
 		prom.AssociateExperimentIDLabels(strconv.Itoa(int(req.Experiment.Id)),
 			patches.Labels)
-
 
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to update experiment")

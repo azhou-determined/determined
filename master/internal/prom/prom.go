@@ -2,13 +2,13 @@ package prom
 
 import (
 	"encoding/json"
-	"github.com/determined-ai/determined/master/pkg/actor"
-	"github.com/determined-ai/determined/master/pkg/device"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"io/ioutil"
 	"os"
-	"path/filepath"
+
+	"github.com/determined-ai/determined/master/pkg/actor"
+	"github.com/determined-ai/determined/master/pkg/device"
 )
 
 var (
@@ -79,11 +79,10 @@ const (
 	// The are extra labels added to metrics on scrape.
 	detAgentIDLabel      = "det_agent_id"
 	detResourcePoolLabel = "det_resource_pool"
-	detAgentName		 = "det_label"
+	detAgentName         = "det_label"
 
-	targetsFile			 = "/etc/determined/prometheus/targets.json"
+	targetsFile = "prom_targets.json"
 )
-
 
 type fileSDConfigEntry struct {
 	Targets []string          `json:"targets"`
@@ -170,7 +169,6 @@ func DisassociateContainerGPUs(cID string, ds ...device.Device) {
 	}
 }
 
-
 // AddAgentFileSDConfig adds an entry to a list of currently active agents in a target JSON-formatted file
 // This file is watched by Prometheus for changes to which targets to scrape
 func AddAgentFileSDConfig(
@@ -182,13 +180,11 @@ func AddAgentFileSDConfig(
 	ctx.Log().Infof("Adding agent %s at %s as a prometheus target", agentId, agentAddress)
 
 	if _, err := os.Stat(targetsFile); os.IsNotExist(err) {
-		err = os.MkdirAll(filepath.Dir(targetsFile), 0755)
-		if err != nil {
-			ctx.Log().Errorf("Error creating directory SD config file %s", err)
-			return
+		pwd, err := os.Getwd()
+		if err == nil {
+			ctx.Log().Infof("pwd %v", pwd)
 		}
-
-		_, err := os.OpenFile(targetsFile, os.O_RDONLY|os.O_CREATE, 0666)
+		_, err = os.OpenFile(targetsFile, os.O_RDONLY|os.O_CREATE, 0666)
 		if err != nil {
 			ctx.Log().Errorf("Error creating targets config file %s", err)
 		}
@@ -201,7 +197,7 @@ func AddAgentFileSDConfig(
 		}, Labels: map[string]string{
 			detAgentIDLabel:      agentId,
 			detResourcePoolLabel: agentResourcePool,
-			detAgentName: agentLabel,
+			detAgentName:         agentLabel,
 		},
 	}
 
@@ -215,7 +211,6 @@ func AddAgentFileSDConfig(
 		ctx.Log().Errorf("Error adding entry to file %s", err)
 	}
 }
-
 
 func getFileSDConfigs() []fileSDConfigEntry {
 	var fileSDConfigs []fileSDConfigEntry

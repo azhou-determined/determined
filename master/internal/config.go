@@ -62,7 +62,7 @@ func DefaultConfig() *Config {
 			MaxTrees:       100,
 		},
 		EnablePrometheus: true,
-		ResourceConfig: resourcemanagers.DefaultResourceConfig(),
+		ResourceConfig:   resourcemanagers.DefaultResourceConfig(),
 	}
 }
 
