@@ -1,3 +1,4 @@
+import argparse
 import faulthandler
 import logging
 import sys
@@ -35,6 +36,11 @@ def main() -> int:
     # TFKerasTrialController or EstimatorTrialController to add that functionality, so for now we
     # continue with the legay strategy.
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--distributed")
+    args = parser.parse_args()
+    distributed = args.distributed
+
     env = det.EnvContext(
         master_url=info.master_url,
         master_cert_file=info.master_cert_file,
@@ -61,11 +67,6 @@ def main() -> int:
         on_cluster=True,
     )
 
-    multi_machine_trial = len(info.container_addrs) > 1
-    hvd_config = horovod.HorovodContext.from_configs(
-        env.experiment_config, env.hparams, multi_machine_trial
-    )
-
     config_logging(env.debug)
 
     if env.experiment_config.debug_enabled():
@@ -82,7 +83,7 @@ def main() -> int:
             controller = load.prepare_controller(
                 env,
                 rendezvous_info,
-                hvd_config,
+                distributed
             )
         except det.InvalidHP:
             # build a Training API object just to call report_early_exit().

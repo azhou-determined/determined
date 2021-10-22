@@ -190,6 +190,7 @@ class HorovodContext:
         # Horovod is always used for multi-machine distributed training. For
         # single-machine multi-GPU training, Horovod is used when native_parallel is
         # disabled.
+
         multi_slot_trial = experiment_config["resources"]["slots_per_trial"] > 1
         use_horovod = multi_machine_trial or (
             multi_slot_trial and not experiment_config.native_parallel_enabled()

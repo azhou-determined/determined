@@ -39,7 +39,7 @@ func ParseAnyExperimentConfigJSON(byts []byte) (ExperimentConfig, error) {
 		err = schemas.SaneBytes(&out, byts)
 		// err = schemas.SaneBytes(&v0, byts)
 		if err != nil {
-			return out, errors.Wrap(err, "version 0 experiment config is invalid")
+			return out, errors.Wrapf(err, "version 0 experiment config is invalid %v %v", &out, string(byts))
 		}
 		err = json.Unmarshal(byts, &out)
 		if err != nil {

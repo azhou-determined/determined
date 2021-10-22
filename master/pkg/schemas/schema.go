@@ -31,7 +31,7 @@ func SaneBytes(schema Schema, byts []byte) error {
 	err := validator.Validate(bytes.NewReader(byts))
 	if err != nil {
 		err = errors.New(JoinErrors(GetRenderedErrors(err, byts), "\n"))
-		return errors.Wrap(err, "config is invalid")
+		return errors.Wrapf(err, "config is invalid %v %v", schema, string(byts))
 	}
 	return nil
 }

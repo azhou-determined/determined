@@ -64,11 +64,11 @@ def trial_class_from_entrypoint(entrypoint_spec: str) -> Type[det.Trial]:
 
 
 def load_trial(
-    trial_class: Type[det.Trial],
-    env: det.EnvContext,
-    rendezvous_info: det.RendezvousInfo,
-    hvd_config: horovod.HorovodContext,
-    workloads: Optional[workload.Stream] = None,
+        trial_class: Type[det.Trial],
+        env: det.EnvContext,
+        rendezvous_info: det.RendezvousInfo,
+        workloads: Optional[workload.Stream] = None,
+        distributed: str = None,
 ) -> det.TrialController:
     # Step 1: Validate model definition.
     controller_class = trial_class.trial_controller_class
@@ -86,8 +86,13 @@ def load_trial(
     controller_class = cast(Type[det.TrialController], controller_class)
 
     # Step 2: Initialize framework-specific details (horovod, random seeds, etc).
-    controller_class.pre_execute_hook(env, hvd_config)
-    trial_context = trial_class.trial_context_class(env, hvd_config, rendezvous_info)
+    # info = det.get_cluster_info()
+    # multi_machine_trial = len(info.container_addrs) > 1
+    # hvd_config = horovod.HorovodContext.from_configs(
+    #     env.experiment_config, env.hparams, multi_machine_trial
+    # )
+    controller_class.pre_execute_hook(env, distributed)
+    trial_context = trial_class.trial_context_class(env, rendezvous_info)
 
     try:
         # Step 3: Instantiate the user's Trial.
@@ -100,7 +105,6 @@ def load_trial(
             context=trial_context,
             env=env,
             rendezvous_info=rendezvous_info,
-            hvd_config=hvd_config,
             workloads=workloads,
         )
     except Exception:
@@ -110,18 +114,18 @@ def load_trial(
 
 
 def prepare_controller(
-    env: det.EnvContext,
-    rendezvous_info: det.RendezvousInfo,
-    hvd_config: horovod.HorovodContext,
+        env: det.EnvContext,
+        rendezvous_info: det.RendezvousInfo,
+        distributed: str
 ) -> det.TrialController:
     """
     Load a user's python code, locate the Trial and Trial Controller, then instantiate one.
     """
 
     if env.experiment_config.native_enabled():
-        controller = load.load_native(env, rendezvous_info, hvd_config)
+        controller = load.load_native(env, rendezvous_info)
     else:
         trial_class = trial_class_from_entrypoint(env.experiment_config["entrypoint"])
-        controller = load_trial(trial_class, env, rendezvous_info, hvd_config)
+        controller = load_trial(trial_class, env, rendezvous_info, distributed=distributed)
 
     return controller

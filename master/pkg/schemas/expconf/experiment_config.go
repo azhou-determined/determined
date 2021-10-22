@@ -36,6 +36,7 @@ type ExperimentConfigV0 struct {
 	RawPerformInitialValidation *bool                       `json:"perform_initial_validation"`
 	RawProfiling                *ProfilingConfigV0          `json:"profiling"`
 	RawRecordsPerEpoch          *int                        `json:"records_per_epoch"`
+	RawLaunch                   *string                     `json:"launch"`
 	RawReproducibility          *ReproducibilityConfigV0    `json:"reproducibility"`
 	RawResources                *ResourcesConfigV0          `json:"resources"`
 	RawSchedulingUnit           *int                        `json:"scheduling_unit"`

@@ -204,6 +204,14 @@ func (e *ExperimentConfigV0) SetRecordsPerEpoch(val int) {
 	e.RawRecordsPerEpoch = &val
 }
 
+func (e ExperimentConfigV0) Launch() *string {
+	return e.RawLaunch
+}
+
+func (e *ExperimentConfigV0) SetLaunch(val *string) {
+	e.RawLaunch = val
+}
+
 func (e ExperimentConfigV0) Reproducibility() ReproducibilityConfigV0 {
 	if e.RawReproducibility == nil {
 		panic("You must call WithDefaults on ExperimentConfigV0 before .Reproducibility")

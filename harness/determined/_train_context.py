@@ -2,6 +2,7 @@ import abc
 import contextlib
 import functools
 import logging
+import os
 import shutil
 import socket
 import tempfile
@@ -17,16 +18,15 @@ class TrialContext(metaclass=abc.ABCMeta):
     """
 
     def __init__(
-        self,
-        env: det.EnvContext,
-        hvd_config: horovod.HorovodContext,
-        rendezvous_info: det.RendezvousInfo,
+            self,
+            env: det.EnvContext,
+            rendezvous_info: det.RendezvousInfo,
+            backend: str = None
     ) -> None:
         self.env = env
-        self.hvd_config = hvd_config
         self.rendezvous_info = rendezvous_info
 
-        if hvd_config.use:
+        if backend == "horovod":
             rank_info = RankInfo(
                 rank=horovod.hvd.rank(),
                 size=horovod.hvd.size(),
@@ -35,6 +35,16 @@ class TrialContext(metaclass=abc.ABCMeta):
                 cross_rank=horovod.hvd.cross_rank(),
                 cross_size=horovod.hvd.cross_size(),
             )
+        elif backend == "torch":
+            rank_info = RankInfo(
+                rank=int(os.environ["RANK"]),
+                size=int(os.environ["WORLD_SIZE"]),
+                local_rank=int(os.environ["LOCAL_RANK"]),
+                local_size=int(os.environ["LOCAL_WORLD_SIZE"]),
+                cross_rank=int(os.environ["GROUP_RANK"]),
+                cross_size=int(os.environ["GROUP_WORLD_SIZE"]),
+            )
+            print(f"train context {backend} {rank_info}")
         else:
             rank_info = RankInfo(
                 rank=0,
@@ -49,6 +59,7 @@ class TrialContext(metaclass=abc.ABCMeta):
             rank_info=rank_info,
             chief_ip=rendezvous_info.container_addrs[0],
             port_offset=env.det_trial_unique_port_offset,
+            backend=backend
         )
         self._stop_requested = False
 
@@ -86,14 +97,14 @@ class TrialContext(metaclass=abc.ABCMeta):
         Arguments:
             config: An experiment config file, in dictionary form.
         """
-        env_context, rendezvous_info, hvd_config = det._make_local_execution_env(
+        env_context, rendezvous_info = det._make_local_execution_env(
             managed_training=False,
             test_mode=False,
             config=config,
             checkpoint_dir="/tmp",
             limit_gpus=1,
         )
-        return cls(env_context, hvd_config, rendezvous_info)
+        return cls(env_context, rendezvous_info)
 
     def get_experiment_config(self) -> Dict[str, Any]:
         """
@@ -192,14 +203,14 @@ class RankInfo:
     """
 
     def __init__(
-        self,
-        *,
-        rank: int,
-        size: int,
-        local_rank: int,
-        local_size: int,
-        cross_rank: int,
-        cross_size: int,
+            self,
+            *,
+            rank: int,
+            size: int,
+            local_rank: int,
+            local_size: int,
+            cross_rank: int,
+            cross_size: int,
     ) -> None:
         self._rank = rank
         self._size = size
@@ -239,14 +250,16 @@ class DistributedContext:
     """
 
     def __init__(
-        self,
-        rank_info: RankInfo,
-        chief_ip: Optional[str] = None,
-        pub_port: int = constants.INTER_TRAIN_PROCESS_COMM_PORT_1,
-        pull_port: int = constants.INTER_TRAIN_PROCESS_COMM_PORT_2,
-        port_offset: int = 0,
-        force_tcp: bool = False,
+            self,
+            rank_info: RankInfo,
+            chief_ip: Optional[str] = None,
+            pub_port: int = constants.INTER_TRAIN_PROCESS_COMM_PORT_1,
+            pull_port: int = constants.INTER_TRAIN_PROCESS_COMM_PORT_2,
+            port_offset: int = 0,
+            force_tcp: bool = False,
+            backend: str = None,
     ) -> None:
+        self._backend = backend
         self._info = rank_info
         self._pub_port = pub_port + port_offset
         self._pull_port = pull_port + port_offset
@@ -386,6 +399,9 @@ class DistributedContext:
         the same rank.
         """
         return self._info.local_rank
+
+    def get_backend(self) -> str:
+        return self._backend
 
     def get_size(self) -> int:
         """

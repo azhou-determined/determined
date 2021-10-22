@@ -139,7 +139,8 @@ class PyTorchTrialContext(det.TrialContext, pytorch._PyTorchReducerContext):
             check.false(self._use_apex, "Must call wrap_model() before configure_apex_amp.")
 
             model = model.to(self.device)
-            if not self.hvd_config.use and self.n_gpus > 1:
+            if not self.distributed.get_backend() and self.n_gpus > 1:
+                # todo anda: change this
                 check.eq(
                     self.hvd_config.aggregation_frequency,
                     1,
@@ -197,7 +198,7 @@ class PyTorchTrialContext(det.TrialContext, pytorch._PyTorchReducerContext):
                 "backward_passes_per_step for local gradient aggregation must be >= 1",
             )
 
-            if self.hvd_config.use:
+            if self.distributed.get_backend() == "horovod":
                 use_compression = self.hvd_config.fp16_compression
                 optimizer = hvd.DistributedOptimizer(
                     optimizer,
@@ -291,11 +292,11 @@ class PyTorchTrialContext(det.TrialContext, pytorch._PyTorchReducerContext):
 
     def _init_device(self) -> None:
         self.n_gpus = len(self.env.container_gpus)
-        if self.hvd_config.use:
+        if self.distributed.get_backend():
             if self.n_gpus > 0:
                 # We launch a horovod process per GPU. Each process
                 # needs to bind to a unique GPU.
-                self.device = torch.device("cuda", hvd.local_rank())
+                self.device = torch.device("cuda", self.distributed.get_local_rank())
                 torch.cuda.set_device(self.device)
             else:
                 self.device = torch.device("cpu")
@@ -479,6 +480,8 @@ class PyTorchTrialContext(det.TrialContext, pytorch._PyTorchReducerContext):
             return True
         if self._current_batch_idx is None:
             raise det.errors.InternalException("Training hasn't started.")
+        if self.distributed.get_backend() != "horovod":
+            return True
         return (self._current_batch_idx + 1) % self.hvd_config.aggregation_frequency == 0
 
     def backward(

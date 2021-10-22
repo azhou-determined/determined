@@ -64,9 +64,9 @@ class PyTorchTrialController(det.TrialController):
             )
 
     @staticmethod
-    def pre_execute_hook(env: det.EnvContext, hvd_config: horovod.HorovodContext) -> None:
+    def pre_execute_hook(env: det.EnvContext, backend: str) -> None:
         # Initialize the correct horovod.
-        if hvd_config.use:
+        if backend == "horovod":
             hvd.require_horovod_type("torch", "PyTorchTrial is in use.")
             hvd.init()
 
@@ -121,8 +121,8 @@ class PyTorchTrialController(det.TrialController):
     def _set_data_loaders(self) -> None:
         skip_batches = self.env.latest_batch
 
-        nreplicas = hvd.size() if self.hvd_config.use else 1
-        rank = hvd.rank() if self.hvd_config.use else 0
+        nreplicas = self.context.distributed.get_size()
+        rank = self.context.distributed.get_rank()
 
         def _dataset_repro_warning(fn: str, data_obj: Any) -> str:
             return (
@@ -191,7 +191,7 @@ class PyTorchTrialController(det.TrialController):
                 ) as load_path:
                     self._load(pathlib.Path(load_path))
 
-            if self.hvd_config.use:
+            if self.context.distributed.get_backend() == "horovod":
                 hvd.broadcast_parameters(self.context._main_model.state_dict(), root_rank=0)
                 for optimizer in self.context.optimizers:
                     hvd.broadcast_optimizer_state(optimizer, root_rank=0)
@@ -211,6 +211,7 @@ class PyTorchTrialController(det.TrialController):
 
     def _run(self) -> None:
         assert self.workloads is not None
+        print(f" workloads {self.workloads}")
         for w, response_func in self.workloads:
             try:
                 if w.kind == workload.Workload.Kind.RUN_STEP:

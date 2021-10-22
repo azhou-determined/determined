@@ -903,6 +903,7 @@ class ExperimentConfigV0(schemas.SchemaBase):
     min_checkpoint_period: Optional[LengthV0] = None
     min_validation_period: Optional[LengthV0] = None
     name: Optional[str] = None
+    launch: Optional[str] = None
     optimizations: Optional[OptimizationsConfigV0] = None
     perform_initial_validation: Optional[bool] = None
     profiling: Optional[ProfilingConfigV0] = None

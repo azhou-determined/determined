@@ -94,7 +94,7 @@ def _make_local_execution_env(
     checkpoint_dir: str,
     hparams: Optional[Dict[str, Any]] = None,
     limit_gpus: Optional[int] = None,
-) -> Tuple[det.EnvContext, det.RendezvousInfo, horovod.HorovodContext]:
+) -> Tuple[det.EnvContext, det.RendezvousInfo]:
     config = det.ExperimentConfig(
         _make_local_execution_exp_config(
             config, checkpoint_dir, managed_training=managed_training, test_mode=test_mode
@@ -129,9 +129,8 @@ def _make_local_execution_env(
         on_cluster=False,
     )
     rendezvous_info = det.RendezvousInfo(container_addrs=["0.0.0.0"], container_rank=0)
-    hvd_config = horovod.HorovodContext.from_configs(env.experiment_config, env.hparams)
 
-    return env, rendezvous_info, hvd_config
+    return env, rendezvous_info
 
 
 @contextlib.contextmanager
