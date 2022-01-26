@@ -24,7 +24,7 @@ def main(train_entrypoint: str) -> int:
         "--node_rank",
         str(info.container_rank),
         "--master_addr",
-        "127.0.0.1" if info.container_rank == 0 else chief_ip,
+        chief_ip,
         "--module"
     ]
 
