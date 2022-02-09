@@ -99,9 +99,7 @@ class GAN(pl.LightningModule):
         **kwargs
     ):
         super().__init__()
-        print(f"hyperparameters {self.hparams}")
-        self.save_hyperparameters()
-
+        self.save_hyperparameters("latent_dim", "lr", "b1", "b2")
         # networks
         data_shape = (channels, width, height)
         self.generator = Generator(latent_dim=self.hparams.latent_dim, img_shape=data_shape)
