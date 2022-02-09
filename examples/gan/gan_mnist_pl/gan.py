@@ -99,6 +99,7 @@ class GAN(pl.LightningModule):
         **kwargs
     ):
         super().__init__()
+        print(f"hyperparameters {self.hparams}")
         self.save_hyperparameters()
 
         # networks
