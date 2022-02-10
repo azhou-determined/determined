@@ -99,7 +99,7 @@ class GAN(pl.LightningModule):
         **kwargs
     ):
         super().__init__()
-        self.save_hyperparameters()
+        self.save_hyperparameters("latent_dim", "lr", "b1", "b2")
         # networks
         data_shape = (channels, width, height)
         self.generator = Generator(latent_dim=self.hparams.latent_dim, img_shape=data_shape)
@@ -112,6 +112,7 @@ class GAN(pl.LightningModule):
     def forward(self, z):
         return self.generator(z)
 
+    @staticmethod
     def adversarial_loss(self, y_hat, y):
         return F.binary_cross_entropy(y_hat, y)
 
