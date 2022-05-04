@@ -29,7 +29,7 @@ def create_launch_cmd(
         master_addr,
         "--master_port",
         str(C10D_PORT),
-        "--"
+        "--module",
     ]
 
     cmd.extend(override_args)
@@ -63,8 +63,6 @@ def create_pid_server_cmd(allocation_id: str, num_workers: int) -> List[str]:
 
 def create_pid_client_cmd(allocation_id: str) -> List[str]:
     return [
-        "python3",
-        "-m",
         "determined.exec.pid_client",
         f"/tmp/pid_server-{allocation_id}",
         "--",
