@@ -38,12 +38,28 @@ def create_launch_cmd(
 
 def create_log_redirect_cmd() -> List[str]:
     return [
+        "determined.exec.worker_process_wrapper",
+        "RANK",
+        "--",
+    ]
+
+
+def create_worker_wrapper_cmd(allocation_id: str) -> List[str]:
+    pid_client_cmd = [
+        "determined.exec.pid_client",
+        f"/tmp/pid_server-{allocation_id}",
+        "--",
+    ]
+
+    log_redirect_cmd = [
         "python3",
         "-m",
         "determined.exec.worker_process_wrapper",
         "RANK",
         "--",
     ]
+
+    return pid_client_cmd + log_redirect_cmd
 
 
 def create_pid_server_cmd(allocation_id: str, num_workers: int) -> List[str]:
@@ -107,8 +123,12 @@ def main(override_args: List[str], script: List[str]) -> int:
     if info.container_rank > 0:
         # Non-chief machine runs pid_server
         launch_cmd = pid_server_cmd + torch_distributed_cmd + log_redirect_cmd + script
+
+        print(f"non chief machine running {launch_cmd}")
     else:
-        launch_cmd = pid_server_cmd + torch_distributed_cmd + pid_client_cmd + log_redirect_cmd + script
+        launch_cmd = pid_server_cmd + torch_distributed_cmd + create_worker_wrapper_cmd(info.allocation_id) + script
+        print(f"chief running {launch_cmd}")
+
 
     print(f"Torch distributed launching with: {launch_cmd}")
 
