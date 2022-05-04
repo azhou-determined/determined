@@ -129,7 +129,7 @@ def main(override_args: List[str], script: List[str]) -> int:
     #     launch_cmd = pid_server_cmd + torch_distributed_cmd + create_worker_wrapper_cmd(info.allocation_id) + script
     #     print(f"chief running {launch_cmd}")
 
-    launch_cmd = pid_server_cmd + torch_distributed_cmd + create_worker_wrapper_cmd(info.allocation_id) + script
+    #launch_cmd = pid_server_cmd + torch_distributed_cmd + create_worker_wrapper_cmd(info.allocation_id) + script
 
     print(f"Torch distributed launching with: {launch_cmd}")
 
