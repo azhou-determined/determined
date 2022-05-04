@@ -29,7 +29,6 @@ def create_launch_cmd(
         master_addr,
         "--master_port",
         str(C10D_PORT),
-        "--module",
     ]
 
     cmd.extend(override_args)
@@ -38,6 +37,8 @@ def create_launch_cmd(
 
 def create_log_redirect_cmd() -> List[str]:
     return [
+        "python3",
+        "-m",
         "determined.exec.worker_process_wrapper",
         "RANK",
         "--",
