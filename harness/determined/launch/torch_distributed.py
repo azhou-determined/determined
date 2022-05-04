@@ -101,12 +101,13 @@ def main(override_args: List[str], script: List[str]) -> int:
     pid_server_cmd = create_pid_server_cmd(info.allocation_id, len(info.slot_ids))
     pid_client_cmd = create_pid_client_cmd(info.allocation_id)
 
-    # Wrap the launcher in a pid_server (chief worker) or pid_client due to a bug in PyTorch
-    # that causes internal NCCL failures to hang
+    # Due to a bug in PyTorch, NCCL process will cause workers to hang.
+
     if info.container_rank > 0:
-        launch_cmd = pid_client_cmd + launch_cmd
+        # Non-chief machine runs pid_server
+        launch_cmd = pid_server_cmd + torch_distributed_cmd + log_redirect_cmd + script
     else:
-        launch_cmd = pid_server_cmd + launch_cmd
+        launch_cmd = pid_server_cmd + torch_distributed_cmd + pid_client_cmd + log_redirect_cmd + script
 
     print(f"Torch distributed launching with: {launch_cmd}")
 
