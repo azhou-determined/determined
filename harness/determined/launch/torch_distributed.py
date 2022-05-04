@@ -110,9 +110,8 @@ def main(override_args: List[str], script: List[str]) -> int:
     else:
         launch_cmd = pid_server_cmd + launch_cmd
 
-    logging.info(
-        f"Torch distributed launching with: {launch_cmd}"
-    )
+    print(f"Torch distributed launching with: {launch_cmd}")
+
     return subprocess.Popen(launch_cmd).wait()
 
 
