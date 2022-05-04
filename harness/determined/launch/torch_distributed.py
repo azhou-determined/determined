@@ -66,6 +66,7 @@ def create_pid_client_cmd(allocation_id: str) -> List[str]:
         "determined.exec.pid_client",
         f"/tmp/pid_server-{allocation_id}",
         "--",
+        "--"
     ]
 
 
