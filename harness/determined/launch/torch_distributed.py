@@ -29,6 +29,7 @@ def create_launch_cmd(
         master_addr,
         "--master_port",
         str(C10D_PORT),
+        "--"
     ]
 
     cmd.extend(override_args)
