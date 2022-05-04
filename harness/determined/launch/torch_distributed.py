@@ -120,15 +120,16 @@ def main(override_args: List[str], script: List[str]) -> int:
 
     # Due to a bug in PyTorch, NCCL process will cause workers to hang.
 
-    if info.container_rank > 0:
-        # Non-chief machine runs pid_server
-        launch_cmd = pid_server_cmd + torch_distributed_cmd + log_redirect_cmd + script
+    # if info.container_rank > 0:
+    #     # Non-chief machine runs pid_server
+    #     launch_cmd = pid_server_cmd + torch_distributed_cmd + log_redirect_cmd + script
+    #
+    #     print(f"non chief machine running {launch_cmd}")
+    # else:
+    #     launch_cmd = pid_server_cmd + torch_distributed_cmd + create_worker_wrapper_cmd(info.allocation_id) + script
+    #     print(f"chief running {launch_cmd}")
 
-        print(f"non chief machine running {launch_cmd}")
-    else:
-        launch_cmd = pid_server_cmd + torch_distributed_cmd + create_worker_wrapper_cmd(info.allocation_id) + script
-        print(f"chief running {launch_cmd}")
-
+    launch_cmd = pid_server_cmd + torch_distributed_cmd + create_worker_wrapper_cmd(info.allocation_id) + script
 
     print(f"Torch distributed launching with: {launch_cmd}")
 
