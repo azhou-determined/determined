@@ -44,6 +44,33 @@ def create_log_redirect_cmd() -> List[str]:
     ]
 
 
+def create_pid_server_cmd(allocation_id: str, num_workers: int) -> List[str]:
+    return [
+        "python3",
+        "-m",
+        "determined.exec.pid_server",
+        "--on-fail",
+        "SIGTERM",
+        "--on-exit",
+        "SIGTERM",
+        "--grace-period",
+        "5",
+        f"/tmp/pid_server-{allocation_id}",
+        str(num_workers),
+        "--",
+    ]
+
+
+def create_pid_client_cmd(allocation_id: str) -> List[str]:
+    return [
+        "python3",
+        "-m",
+        "determined.exec.pid_client",
+        f"/tmp/pid_server-{allocation_id}",
+        "--",
+    ]
+
+
 def main(override_args: List[str], script: List[str]) -> int:
     override_args = override_args or []
 
@@ -71,11 +98,22 @@ def main(override_args: List[str], script: List[str]) -> int:
 
     log_redirect_cmd = create_log_redirect_cmd()
 
-    logging.debug(
-        f"Torch distributed launching with: {torch_distributed_cmd + log_redirect_cmd + script}"
-    )
+    launch_cmd = torch_distributed_cmd + log_redirect_cmd + script
 
-    return subprocess.Popen(torch_distributed_cmd + log_redirect_cmd + script).wait()
+    pid_server_cmd = create_pid_server_cmd(info.allocation_id, len(info.slot_ids))
+    pid_client_cmd = create_pid_client_cmd(info.allocation_id)
+
+    # Wrap the launcher in a pid_server (chief worker) or pid_client due to a bug in PyTorch
+    # that causes internal NCCL failures to hang
+    if info.container_rank > 0:
+        launch_cmd = pid_client_cmd + launch_cmd
+    else:
+        launch_cmd = pid_server_cmd + launch_cmd
+
+    logging.info(
+        f"Torch distributed launching with: {launch_cmd}"
+    )
+    return subprocess.Popen(launch_cmd).wait()
 
 
 def parse_args(args: List[str]) -> Tuple[List[str], List[str]]:
