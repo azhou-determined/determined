@@ -17,7 +17,6 @@ from torch import nn
 from layers import Flatten
 
 from determined.pytorch import DataLoader, PyTorchTrial, PyTorchTrialContext
-import determined
 
 import data
 
@@ -77,7 +76,7 @@ class MNistTrial(PyTorchTrial):
         return DataLoader(validation_data, batch_size=self.context.get_per_slot_batch_size())
 
     def train_batch(
-        self, batch: TorchData, epoch_idx: int, batch_idx: int
+            self, batch: TorchData, epoch_idx: int, batch_idx: int
     ) -> Dict[str, torch.Tensor]:
         batch = cast(Tuple[torch.Tensor, torch.Tensor], batch)
         data, labels = batch
@@ -101,8 +100,3 @@ class MNistTrial(PyTorchTrial):
         accuracy = pred.eq(labels.view_as(pred)).sum().item() / len(data)
 
         return {"validation_loss": validation_loss, "accuracy": accuracy}
-
-
-if __name__ == "__main__":
-    with determined.train.Trainer(MNistTrial) as trainer:
-        trainer.train()
