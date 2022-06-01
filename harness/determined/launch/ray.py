@@ -120,6 +120,10 @@ def main(override_args: List[str], script: List[str]) -> int:
         ray_proc = subprocess.Popen(ray_cmd)
         try:
             return subprocess.Popen(launch_cmd).wait()
+        except Exception as e:
+            print(f"Launch failed with {e}")
+            ray_proc.kill()
+            ray_proc.wait()
         finally:
             print("Task complete, exiting")
             ray_proc.kill()
