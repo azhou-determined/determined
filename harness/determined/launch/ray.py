@@ -119,7 +119,8 @@ def main(override_args: List[str], script: List[str]) -> int:
         return subprocess.Popen(ray_cmd).wait()
     else:
         os.environ["RANK"] = "0"
-        os.environ["RAY_ADDRESS"] = f"{chief_ip}:{RAY_PORT}"
+        ray_head_addr = "localhost" if len(info.container_addrs) == 1 else chief_ip
+        os.environ["RAY_ADDRESS"] = f"{ray_head_addr}:{RAY_PORT}"
         ray_proc = subprocess.Popen(ray_cmd)
         try:
             return subprocess.Popen(launch_cmd).wait()
