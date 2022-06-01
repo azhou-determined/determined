@@ -22,6 +22,7 @@ def create_launch_cmd_head(
         str(RAY_PORT),
         "--num-gpus",
         str(proc_per_node),
+        "--block"
     ]
 
     cmd.extend(override_args)
@@ -38,6 +39,7 @@ def create_launch_cmd_compute(
         f"{master_addr}:{RAY_PORT}",
         "--num-gpus",
         str(proc_per_node),
+        "--block"
     ]
 
     cmd.extend(override_args)
@@ -122,8 +124,6 @@ def main(override_args: List[str], script: List[str]) -> int:
             return subprocess.Popen(launch_cmd).wait()
         except Exception as e:
             print(f"Launch failed with {e}")
-            ray_proc.kill()
-            ray_proc.wait()
         finally:
             print("Task complete, exiting")
             ray_proc.kill()
