@@ -685,9 +685,9 @@ class PIDServer:
             self.run(health_check)
         except HealthCheckFail as e:
             return e.exit_code or 77
-        except det.errors.WorkerError:
+        except det.errors.WorkerError as we:
             # Worker failed.
-            print(f"Worker failed, executing {on_fail}")
+            print(f"Worker failed with {we}, executing {on_fail}")
             if on_fail is not None:
                 # Let things finish logging, exiting on their own, etc.
                 time.sleep(grace_period)
