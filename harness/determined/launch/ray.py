@@ -21,7 +21,8 @@ def create_launch_cmd_head(
         "--port",
         str(RAY_PORT),
         "--num-gpus",
-        str(proc_per_node)
+        str(proc_per_node),
+        "--block"
     ]
 
     cmd.extend(override_args)
@@ -37,7 +38,8 @@ def create_launch_cmd_compute(
         "--address",
         f"{master_addr}:{RAY_PORT}",
         "--num-gpus",
-        str(proc_per_node)
+        str(proc_per_node),
+        "--block"
     ]
 
     cmd.extend(override_args)
