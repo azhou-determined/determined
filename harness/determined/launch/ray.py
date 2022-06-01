@@ -118,7 +118,12 @@ def main(override_args: List[str], script: List[str]) -> int:
     else:
         os.environ["RANK"] = "0"
         ray_proc = subprocess.Popen(ray_cmd)
-        return subprocess.Popen(launch_cmd).wait()
+        try:
+            return subprocess.Popen(launch_cmd).wait()
+        finally:
+            print("Task complete, exiting")
+            ray_proc.kill()
+            ray_proc.wait()
 
 
 def parse_args(args: List[str]) -> Tuple[List[str], List[str]]:
