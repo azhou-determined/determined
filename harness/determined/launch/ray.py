@@ -62,7 +62,7 @@ def create_pid_server_cmd(allocation_id: str, num_slot_ids: int) -> List[str]:
         "--on-fail",
         "SIGTERM",
         "--on-exit",
-        "WAIT",
+        "SIGTERM",
         f"/tmp/pid_server-{allocation_id}",
         str(num_slot_ids),
         "--",
