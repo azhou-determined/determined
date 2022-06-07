@@ -2,7 +2,6 @@ from determined.__version__ import __version__
 from determined._experiment_config import ExperimentConfig
 from determined._info import RendezvousInfo, TrialInfo, ResourcesInfo, ClusterInfo, get_cluster_info
 from determined import core
-from determined import train
 from determined._env_context import EnvContext
 from determined._trial_context import TrialContext
 from determined._trial import Trial
@@ -19,6 +18,7 @@ from determined._execution import (
 )
 from determined._hparam import Categorical, Constant, Double, Integer, Log
 from determined import errors
+from determined import train
 from determined import util
 
 # LOG_FORMAT is the standard format for use with the logging module, which is required for the
