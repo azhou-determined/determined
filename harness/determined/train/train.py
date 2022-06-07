@@ -17,7 +17,7 @@ class Trainer:
     def __enter__(self):
         return self
 
-    def __exit__(self):
+    def __exit__(self, typ: type, value: Exception, tb: Any) -> None:
         return
 
     @contextlib.contextmanager
