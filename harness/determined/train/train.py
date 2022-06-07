@@ -17,6 +17,9 @@ class Trainer:
     def __enter__(self):
         return
 
+    def __exit__(self):
+        return
+
     @contextlib.contextmanager
     def train(self):
         info = det.get_cluster_info()
