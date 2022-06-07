@@ -1,6 +1,6 @@
 import contextlib
 import logging
-from typing import Type
+from typing import Type, Any
 
 from determined import core, horovod, load
 
