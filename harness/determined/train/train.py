@@ -15,7 +15,7 @@ class Trainer:
         return
 
     def __enter__(self):
-        return
+        return self
 
     def __exit__(self):
         return
