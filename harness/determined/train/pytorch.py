@@ -51,7 +51,6 @@ class Trainer:
         self.core_context.__exit__(typ, value, tb)
         return
 
-    @contextlib.contextmanager
     def train(self, trial: det.Trial):
         controller = self.controller_class.from_trial(
             trial_inst=trial,
