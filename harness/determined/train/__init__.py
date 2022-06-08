@@ -1,1 +1,1 @@
-from determined.train.train import Trainer
+from determined.train.pytorch import Trainer
