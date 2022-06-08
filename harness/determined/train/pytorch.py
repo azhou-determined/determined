@@ -48,7 +48,7 @@ class Trainer:
         return self
 
     def __exit__(self, typ: type, value: Exception, tb: Any) -> None:
-        self.core_context.__exit__()
+        self.core_context.__exit__(typ, value, tb)
         return
 
     @contextlib.contextmanager
