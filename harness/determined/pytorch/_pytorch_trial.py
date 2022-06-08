@@ -242,7 +242,7 @@ class PyTorchTrialController(det.TrialController):
                 hvd.broadcast_parameters(self.context._main_model.state_dict(), root_rank=0)
                 for optimizer in self.context.optimizers:
                     hvd.broadcast_optimizer_state(optimizer, root_rank=0)
-
+            print(f"workloads {self.workloads}")
             with self.prof:
                 for callback in self.callbacks.values():
                     with self.prof.record_timing(
