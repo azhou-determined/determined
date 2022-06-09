@@ -435,6 +435,7 @@ class PyTorchTrialController(det.TrialController):
             per_batch_metrics.append(tr_metrics)
 
             if self.context.is_epoch_end():
+                print(f"epoch end {epoch_idx}, rank {self.context.distributed.rank}")
                 for callback in self.callbacks.values():
                     with self.prof.record_timing(
                         f"callbacks.{callback.__class__.__name__}.on_training_epoch_end"
