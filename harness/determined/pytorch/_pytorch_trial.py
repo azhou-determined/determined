@@ -239,6 +239,7 @@ class PyTorchTrialController(det.TrialController):
                     self._load(load_path)
 
             if self.context.distributed.size > 1 and self.use_horovod:
+                print(f"hvd broadcast{self.context.distributed.rank}")
                 hvd.broadcast_parameters(self.context._main_model.state_dict(), root_rank=0)
                 for optimizer in self.context.optimizers:
                     hvd.broadcast_optimizer_state(optimizer, root_rank=0)
