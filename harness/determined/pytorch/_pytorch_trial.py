@@ -255,6 +255,7 @@ class PyTorchTrialController(det.TrialController):
     def _run(self) -> None:
         assert self.workloads is not None
         for w, response_func in self.workloads:
+            print(f"workload {w.kind}")
             try:
                 if w.kind == workload.Workload.Kind.RUN_STEP:
                     action = "training"
