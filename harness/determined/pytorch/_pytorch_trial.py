@@ -301,7 +301,7 @@ class PyTorchTrialController(det.TrialController):
             response_func(response)
 
     def get_epoch_idx(self, batch_id: int) -> int:
-        return batch_id // self.context._epoch_len
+        return batch_id // len(self.training_loader)
 
     def _auto_step_lr_scheduler_per_batch(
         self, batch_idx: int, lr_scheduler: pytorch.LRScheduler
@@ -372,7 +372,7 @@ class PyTorchTrialController(det.TrialController):
                     batch = self.context.to_device(batch)
 
             self.context._current_batch_idx = batch_idx
-            epoch_idx = self.get_epoch_idx(batch_idx)
+            epoch_idx = batch_idx // len(self.training_loader)
             print(f"train for step epoch {epoch_idx} batch {batch_idx}")
             if self.context.is_epoch_start():
                 for callback in self.callbacks.values():
