@@ -372,7 +372,7 @@ class PyTorchTrialController(det.TrialController):
                     batch = self.context.to_device(batch)
 
             self.context._current_batch_idx = batch_idx
-            epoch_idx = batch_idx // len(self.training_loader)
+            epoch_idx = self.get_epoch_idx(batch_idx)
             print(f"train for step epoch {epoch_idx} batch {batch_idx}")
             if self.context.is_epoch_start():
                 for callback in self.callbacks.values():
