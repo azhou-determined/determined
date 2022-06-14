@@ -301,6 +301,7 @@ class PyTorchTrialController(det.TrialController):
             response_func(response)
 
     def get_epoch_idx(self, batch_id: int) -> int:
+        print(f"get epoch idx batch {batch_id}, len training loader {len(self.training_loader)}")
         return batch_id // len(self.training_loader)
 
     def _auto_step_lr_scheduler_per_batch(
@@ -325,6 +326,7 @@ class PyTorchTrialController(det.TrialController):
         elif lr_scheduler._step_mode == pytorch.LRScheduler.StepMode.STEP_EVERY_EPOCH:
             # We will step if the next optimizer step will land in the next epoch.
             epoch_idx = self.get_epoch_idx(batch_idx)
+            print(f"lr scheduler epoch {epoch_idx}, batch {batch_idx}")
             next_steppable_batch = batch_idx + self.context._aggregation_frequency
             next_batch_epoch_idx = self.get_epoch_idx(next_steppable_batch)
             for e in range(epoch_idx, next_batch_epoch_idx):
@@ -372,6 +374,7 @@ class PyTorchTrialController(det.TrialController):
 
             self.context._current_batch_idx = batch_idx
             epoch_idx = self.get_epoch_idx(batch_idx)
+            print(f"train for step epoch {epoch_idx} batch {batch_idx}")
             if self.context.is_epoch_start():
                 for callback in self.callbacks.values():
                     with self.prof.record_timing(
