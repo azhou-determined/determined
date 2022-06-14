@@ -301,8 +301,7 @@ class PyTorchTrialController(det.TrialController):
             response_func(response)
 
     def get_epoch_idx(self, batch_id: int) -> int:
-        print(f"get epoch idx batch {batch_id}, len training loader {len(self.training_loader)}")
-        return batch_id // len(self.training_loader)
+        return batch_id // len(self.context._epoch_len)
 
     def _auto_step_lr_scheduler_per_batch(
         self, batch_idx: int, lr_scheduler: pytorch.LRScheduler
