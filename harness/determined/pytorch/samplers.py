@@ -104,10 +104,11 @@ class DistributedBatchSampler(torch.utils.data.BatchSampler):
         self.num_workers = num_workers
         self.rank = rank
 
-    # def __len__(self) -> int:
-    #     full_global_batches = len(self.batch_sampler) // self.num_workers
-    #     worker_gets_partial_batch = int(len(self.batch_sampler) % self.num_workers > self.rank)
-    #     return full_global_batches + worker_gets_partial_batch
+    def __len__(self) -> int:
+        # full_global_batches = len(self.batch_sampler) // self.num_workers
+        # worker_gets_partial_batch = int(len(self.batch_sampler) % self.num_workers > self.rank)
+        # return full_global_batches + worker_gets_partial_batch
+        return len(self.batch_sampler)
 
     def __iter__(self) -> Iterator:
         if self.num_workers == 1:
