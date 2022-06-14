@@ -153,7 +153,7 @@ class PyTorchTrialController(det.TrialController):
                 )
             self.training_loader = train_data
 
-        self.context._epoch_len = self.env.experiment_config.get_records_per_epoch()
+        self.context._epoch_len = len(self.training_loader)
 
         # Validation loader will be undefined on process ranks > 0
         # when the user defines `validate_full_dataset()`.
