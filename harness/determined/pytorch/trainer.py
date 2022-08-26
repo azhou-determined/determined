@@ -56,21 +56,21 @@ class PyTorchTrainContext:
         return model
 
     def backward(
-            self,
-            loss: torch.Tensor,
-            gradient: Optional[torch.Tensor] = None,
-            retain_graph: bool = False,
-            create_graph: bool = False,
+        self,
+        loss: torch.Tensor,
+        gradient: Optional[torch.Tensor] = None,
+        retain_graph: bool = False,
+        create_graph: bool = False,
     ) -> None:
         loss.backward(  # type: ignore
             gradient=gradient, retain_graph=retain_graph, create_graph=create_graph
         )
 
     def wrap_optimizer(
-            self,
-            optimizer: torch.optim.Optimizer,
-            backward_passes_per_step: int = 1,
-            gradient_compression: bool = False,
+        self,
+        optimizer: torch.optim.Optimizer,
+        backward_passes_per_step: int = 1,
+        gradient_compression: bool = False,
     ) -> torch.optim.Optimizer:
         self.optimizers.append(optimizer)
         return optimizer
@@ -86,11 +86,11 @@ class PyTorchTrainContext:
             p.grad.data.div_(divisor_value)
 
     def step_optimizer(
-            self,
-            optimizer: torch.optim.Optimizer,
-            clip_grads: Optional[Callable[[Iterator], None]] = None,
-            auto_zero_grads: bool = True,
-            scaler: Optional[Any] = None,
+        self,
+        optimizer: torch.optim.Optimizer,
+        clip_grads: Optional[Callable[[Iterator], None]] = None,
+        auto_zero_grads: bool = True,
+        scaler: Optional[Any] = None,
     ) -> None:
         check.true(
             auto_zero_grads or self.aggregation_frequency == 1,
@@ -124,28 +124,33 @@ class Trainer:
         self.core_context = self.context._core
 
     def train(
-            self,
-            max_epochs: Optional[int] = None,
-            # OR
-            max_batches: Optional[int] = None,
-            min_checkpoint_period: int = 0,
-            min_validation_period: int = 1,
-            average_training_metrics: bool = True,
-            average_aggregated_gradients: bool = True,
-            aggregation_frequency: int = 2,
-            searcher_metric="validation_loss",
-            profiling=True,
-            profiling_start=0,
-            profiling_end=10,
-            sync_timings=None,
-            checkpoint_policy="best|all|none"
+        self,
+        max_epochs: Optional[int] = None,
+        # OR
+        max_batches: Optional[int] = None,
+        min_checkpoint_period: int = 1,
+        min_validation_period: int = 1,
+        average_training_metrics: bool = True,
+        average_aggregated_gradients: bool = True,
+        aggregation_frequency: int = 2,
+        searcher_metric="validation_loss",
+        profiling=True,
+        profiling_start=0,
+        profiling_end=10,
+        sync_timings=None,
+        checkpoint_policy="best|all|none"
     ):
-        train_data = self.trial.build_training_data_loader()
-        num_replicas = self.core_context.distributed.size
-        rank = self.core_context.distributed.rank
+        assert (max_epochs is None) ^ (max_batches is None), "Either max_batches or max_epochs must be defined"
 
         # TODO: figure out a better way to do this.
         self.context.aggregation_frequency = aggregation_frequency
+
+        # Get the minimum of checkpoint_period or validation_period for metrics reporting
+        train_step_size = min(min_checkpoint_period, min_validation_period)
+
+        train_data = self.trial.build_training_data_loader()
+        num_replicas = self.core_context.distributed.size
+        rank = self.core_context.distributed.rank
 
         training_loader = train_data.get_data_loader(
             repeat=False, num_replicas=num_replicas, rank=rank
@@ -159,17 +164,58 @@ class Trainer:
         batches = 0
 
         # Report training has started
-        self.context._core.train.set_status("training")
+        self.core_context.train.set_status("training")
 
         while (max_epochs and epochs <= max_epochs) or (max_batches and batches <= max_batches):
+            metrics = []
             for batch_idx, batch in enumerate(training_loader):
                 self.context._current_batch_idx = batches
                 training_metrics = self.trial.train_batch(batch, epochs, batch_idx)
                 batches += 1
+                if max_batches and batches == train_step_size:
+                    self.core_context.train.report_training_metrics(
+                        batches, training_metrics
+                    )
+                if max_batches and batches == min_validation_period:
+                    self.validate()
+                metrics.append(training_metrics)
 
             epochs += 1
+            if max_epochs and epochs == train_step_size:
+                self.core_context.train.report_training_metrics(
+                    epochs, metrics
+                )
+            if max_epochs and epochs == min_validation_period:
+                self.validate()
 
         return
+
+    def validate(self):
+        val_data = self.trial.build_validation_data_loader()
+        num_replicas = self.core_context.distributed.size
+        rank = self.core_context.distributed.rank
+
+        val_loader = val_data.get_data_loader(
+            repeat=False, num_replicas=num_replicas, rank=rank
+        )
+
+        # Set models to evaluation mode
+        for model in self.context.models:
+            model.eval()
+
+        # Report training has started
+        self.core_context.train.set_status("validating")
+
+        for batch_idx, batch in enumerate(val_loader):
+            val_metrics = self.trial.evaluate_batch(batch, batch_idx)
+            print(f"Validate metrics {val_metrics}")
+
+        return
+
+
+
+
+
 
 
 def init():

@@ -360,7 +360,7 @@ class PyTorchTrialController(det.TrialController):
                 if (i + 1) % lr_scheduler._frequency == 0:
                     lr_scheduler.step()
         elif lr_scheduler._step_mode == pytorch.LRScheduler.StepMode.STEP_EVERY_OPTIMIZER_STEP:
-            if (batch_idx + 1) % lr_scheduler._frequency == 0:
+            if (batch_idx + 1) % lr_scheduler._frxequency == 0:
                 lr_scheduler.step()
         elif lr_scheduler._step_mode == pytorch.LRScheduler.StepMode.STEP_EVERY_EPOCH:
             # We will step if the next optimizer step will land in the next epoch.
