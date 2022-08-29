@@ -109,6 +109,7 @@ def main():
         trainer.train(
             max_epochs=2,
             min_checkpoint_period=1,
+            min_validation_period=1,
         )
 
 

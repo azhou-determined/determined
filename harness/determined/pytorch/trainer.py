@@ -207,15 +207,12 @@ class Trainer:
         self.core_context.train.set_status("validating")
 
         for batch_idx, batch in enumerate(val_loader):
-            val_metrics = self.trial.evaluate_batch(batch, batch_idx)
-            print(f"Validate metrics {val_metrics}")
+            val_metrics = self.trial.evaluate_batch(batch)
 
+        # Set models back to training mode
+        for model in self.context.models:
+            model.train()
         return
-
-
-
-
-
 
 
 def init():
