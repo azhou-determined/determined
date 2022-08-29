@@ -176,7 +176,7 @@ class Trainer:
                     self.core_context.train.report_training_metrics(
                         batches, training_metrics
                     )
-                if max_batches and batches == min_validation_period:
+                if max_batches and batches % min_validation_period == 0:
                     self.validate()
                 metrics.append(training_metrics)
 
@@ -185,7 +185,7 @@ class Trainer:
                 self.core_context.train.report_training_metrics(
                     epochs, metrics
                 )
-            if max_epochs and epochs == min_validation_period:
+            if max_epochs and epochs % min_validation_period == 0:
                 self.validate()
 
         return
@@ -208,6 +208,7 @@ class Trainer:
 
         for batch_idx, batch in enumerate(val_loader):
             val_metrics = self.trial.evaluate_batch(batch)
+            print(f"Validation metrics: {val_metrics}")
 
         # Set models back to training mode
         for model in self.context.models:

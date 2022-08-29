@@ -1,0 +1,8 @@
+name: mnist_pytorch_const
+searcher:
+  name: single
+  metric: validation_loss
+  max_length:
+    batches: 937 #60,000 training images with batch size 64
+#  smaller_is_better: true
+entrypoint: python3 train.py
