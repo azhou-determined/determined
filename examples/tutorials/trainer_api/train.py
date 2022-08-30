@@ -4,6 +4,8 @@ from typing import Any, Dict, Tuple, cast
 from torchvision import datasets, transforms
 from torch import nn
 from determined.pytorch import DataLoader, TorchData
+import determined as det
+import logging
 
 
 class Flatten(nn.Module):
@@ -114,4 +116,5 @@ def main():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG, format=det.LOG_FORMAT)
     main()

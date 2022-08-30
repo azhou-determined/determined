@@ -9,12 +9,14 @@ from determined.common import check
 import logging
 
 
-class PyTorchTrainContext:
+class PyTorchTrainContext(pytorch._PyTorchReducerContext):
     def __init__(self):
         self._core = core.init()
+        self.distributed = self._core.distributed
+        pytorch._PyTorchReducerContext.__init__(self, self.distributed.allgather)
+
         self.cluster_info = det.get_cluster_info()
         self.models = []  # type: List[nn.Module]
-        self.distributed = self._core.distributed
         self._distributed_backend = det._DistributedBackend()
         self.device = self._init_device()
         self.optimizers = []  # type: List[torch.optim.Optimizer]
@@ -168,27 +170,49 @@ class Trainer:
 
         while (max_epochs and epochs <= max_epochs) or (max_batches and batches <= max_batches):
             metrics = []
+            num_records = 0
+
             for batch_idx, batch in enumerate(training_loader):
                 self.context._current_batch_idx = batches
+
+                num_records += self.trial.get_batch_length(batch)
+
                 training_metrics = self.trial.train_batch(batch, epochs, batch_idx)
+                for name, metric in training_metrics.items():
+                    # Convert PyTorch metric values to NumPy, so that
+                    # `det.util.encode_json` handles them properly without
+                    # needing a dependency on PyTorch.
+                    if isinstance(metric, torch.Tensor):
+                        metric = metric.cpu().detach().numpy()
+                    training_metrics[name] = metric
+
+                metrics.append(training_metrics)
+
                 batches += 1
                 if max_batches and batches == train_step_size:
+                    metrics = self._prepare_metrics(num_inputs=num_records, batch_metrics=metrics)
                     self.core_context.train.report_training_metrics(
-                        batches, training_metrics
+                        steps_completed=batches, metrics=metrics
                     )
                 if max_batches and batches % min_validation_period == 0:
                     self.validate()
-                metrics.append(training_metrics)
-
             epochs += 1
             if max_epochs and epochs == train_step_size:
+                metrics = self._prepare_metrics(num_inputs=num_records, batch_metrics=metrics)
                 self.core_context.train.report_training_metrics(
-                    epochs, metrics
+                    steps_completed=epochs, metrics=metrics
                 )
             if max_epochs and epochs % min_validation_period == 0:
                 self.validate()
 
         return
+
+    def _prepare_metrics(self, num_inputs: int, batch_metrics: List):
+        metrics = det.util.make_metrics(num_inputs, batch_metrics)
+        metrics["avg_metrics"].update(
+            pytorch._convert_metrics_to_numpy(self.context.reduce_metrics(for_training=True))
+        )
+        return metrics
 
     def validate(self):
         val_data = self.trial.build_validation_data_loader()
@@ -208,7 +232,6 @@ class Trainer:
 
         for batch_idx, batch in enumerate(val_loader):
             val_metrics = self.trial.evaluate_batch(batch)
-            print(f"Validation metrics: {val_metrics}")
 
         # Set models back to training mode
         for model in self.context.models:
