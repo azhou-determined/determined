@@ -195,7 +195,8 @@ class Trainer:
                         steps_completed=batches, metrics=metrics
                     )
                 if max_batches and batches % min_validation_period == 0:
-                    self.validate()
+                    val_metrics = self.validate()
+                    self.core_context.train.report_validation_metrics(steps_completed=batches, metrics=val_metrics)
             epochs += 1
             if max_epochs and epochs == train_step_size:
                 metrics = self._prepare_metrics(num_inputs=num_records, batch_metrics=metrics)
@@ -203,7 +204,8 @@ class Trainer:
                     steps_completed=epochs, metrics=metrics
                 )
             if max_epochs and epochs % min_validation_period == 0:
-                self.validate()
+                val_metrics = self.validate()
+                self.core_context.train.report_validation_metrics(steps_completed=epochs, metrics=val_metrics)
 
         return
 
@@ -230,13 +232,29 @@ class Trainer:
         # Report training has started
         self.core_context.train.set_status("validating")
 
+        keys = None
+        batch_metrics = []
+
         for batch_idx, batch in enumerate(val_loader):
             val_metrics = self.trial.evaluate_batch(batch)
+            batch_metrics.append(pytorch._convert_metrics_to_numpy(val_metrics))
+
+            if keys is None:
+                keys = val_metrics.keys()
+
+        metrics = pytorch._reduce_metrics(
+            self.context.distributed,
+            batch_metrics=batch_metrics,
+            keys=keys,
+            metrics_reducers=pytorch._prepare_metrics_reducers(
+                self.trial.evaluation_reducer(), keys=keys
+            ),
+        )
 
         # Set models back to training mode
         for model in self.context.models:
             model.train()
-        return
+        return metrics
 
 
 def init():
