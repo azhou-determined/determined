@@ -18,14 +18,13 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/shirou/gopsutil v2.19.9+incompatible
 	github.com/sirupsen/logrus v1.8.1
-	github.com/spf13/cobra v1.2.1
+	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/sys v0.0.0-20220825204002-c680a09ffe64
 	gotest.tools v2.2.0+incompatible
 )
 
 require (
-	github.com/determined-ai/determined/proto v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.8.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho v0.29.0
 	golang.org/x/exp v0.0.0-20220328175248-053ad81199eb
@@ -80,7 +79,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgconn v1.9.0 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
