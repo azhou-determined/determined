@@ -461,9 +461,8 @@ class _PyTorchTrialController:
             self.state.epochs_trained += 1
 
     def _stop_requested(self) -> None:
-        if self.core_context.distributed.rank == 0:
-            if self.core_context.preempt.should_preempt():
-                raise ShouldExit()
+        if self.core_context.preempt.should_preempt():
+            raise ShouldExit()
         if self.context.get_stop_requested():
             raise ShouldExit()
 

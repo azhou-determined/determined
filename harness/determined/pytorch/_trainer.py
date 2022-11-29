@@ -206,7 +206,7 @@ def init(
 
     with core.init(
         distributed=distributed_context,
-        preempt_mode=core.PreemptMode.ChiefOnly,
+        preempt_mode=core.PreemptMode.WorkersAskChief,
         tensorboard_mode=core.TensorboardMode.MANUAL,
     ) as core_context:
         context = pytorch.PyTorchTrialContext(
