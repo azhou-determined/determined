@@ -297,6 +297,18 @@ def create_model(
 
 
 @_require_singleton
+def report_metrics(
+    trial_id: int,
+    steps_completed: int,
+    metrics: Dict,
+) -> Dict:
+    assert _determined is not None
+    return _determined.report_metrics(
+        trial_id=trial_id, steps_completed=steps_completed, metrics=metrics
+    )
+
+
+@_require_singleton
 def get_model(identifier: Union[str, int]) -> Model:
     """
     Get the :class:`~determined.experimental.client.Model` from the model registry

@@ -194,6 +194,20 @@ class Determined:
             self._session,
         )
 
+    def report_metrics(self, trial_id: int, steps_completed: int, metrics: Dict) -> Dict:
+        body = {
+            "trial_run_id": 1,
+            "steps_completed": steps_completed,
+            "metrics": {
+                "avg_metrics": metrics,
+            },
+        }
+        self._session.post(
+            f"/api/v1/trials/{str(trial_id)}/training_metrics",
+            data=det.util.json_encode(body),
+        )
+        return body
+
     def get_trial(self, trial_id: int) -> trial.TrialReference:
         """
         Get the :class:`~determined.experimental.TrialReference` representing the
