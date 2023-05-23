@@ -76,58 +76,147 @@ def main(train_entrypoint: str) -> int:
         on_cluster=True,
     )
 
+    if hasattr(det, "keras") and issubclass(trial_class, det.keras.TFKerasTrial):
+        return _run_keras_trial(trial_class, info, env)
+
+    if hasattr(det, "estimator") and issubclass(trial_class, det.estimator.EstimatorTrial):
+        return _run_estimator_trial(trial_class, info, env)
+
+    if hasattr(det, "pytorch") and issubclass(trial_class, det.pytorch.deepspeed.DeepspeedTrial):
+        return _run_deepspeed_trial(trial_class, info, env)
+
+    return 0
+
+
+def _run_keras_trial(
+    trial_class: "Type[det.keras.TFKerasTrial]", info: det.ClusterInfo, env: det.EnvContext
+) -> int:
+    from determined import keras
+
     det.common.set_logger(env.debug)
     logging.debug("Starting harness.")
-
     with maybe_periodic_stacktraces(env.debug):
-        # Step 1: Load user code.
-        # We can't build a core.Context without rank information, and we can't gather rank
-        # information until the distributed backend is initialized, and we can't initialize the
-        # correct distributed backend until we know which Trial class the user implemented.
-        controller_class = load.get_trial_controller_class(trial_class)
-
-        # Step 2: Initialize framework-specific details (dtrain framework, random seeds, etc).
+        # Initialize framework-specific details (dtrain framework, random seeds, etc).
         distributed_backend = det._DistributedBackend()
-        controller_class.pre_execute_hook(env, distributed_backend)
+        keras.TFKerasTrialController.pre_execute_hook(env, distributed_backend)
 
-        # Step 3: Now that the dtrain framework is initialized, build the DistributedContext object.
-        # For harness.py, we only support a fixed set of Determined-provided launch layers, since
-        # the TrialControllers only support a fixed set of launch layers.
         distributed = None
         if distributed_backend.use_horovod():
             distributed = core.DistributedContext.from_horovod(horovod.hvd)
-        elif distributed_backend.use_deepspeed():
-            distributed = core.DistributedContext.from_deepspeed()
-        elif distributed_backend.use_torch():
-            distributed = core.DistributedContext.from_torch_distributed()
         elif len(info.container_addrs) > 1 or len(info.slot_ids) > 1:
             raise ValueError(
-                "In multi-slot tasks, the determined.exec.harness module must not be invoked "
-                "directly.  Instead, it must be wrapped in one of the following launch layers: "
-                "determined.launch.horovod, determined.launch.deepspeed"
+                "In multi-slot tasks for TFKerasTrial, the determined.exec.harness module must be "
+                "wrapped in the following launch layer: determined.launch.horovod."
             )
 
-        # Step 4: Let core.init() create the core.Context.
         with core.init(
             distributed=distributed,
             preempt_mode=core.PreemptMode.ChiefOnly,
             tensorboard_mode=core.TensorboardMode.MANUAL,
         ) as core_context:
-            trial_context = trial_class.trial_context_class(core_context, env)
+            trial_context = keras.TFKerasTrialContext(core_context, env)
 
-            # Step 4: Instantiate the user's Trial.
             trial_inst = trial_class(trial_context)
 
-            # Step 5: Create a TrialController and execute training
-            logging.info(f"Creating {controller_class.__name__} with {trial_class.__name__}.")
-            controller = controller_class.from_trial(
+            logging.info(
+                f"Creating {keras.TFKerasTrialController.__name__} with " f"{trial_class.__name__}."
+            )
+            controller = keras.TFKerasTrialController.from_trial(
                 trial_inst=trial_inst,
                 context=trial_context,
                 env=env,
             )
 
             controller.run()
+    return 0
 
+
+def _run_estimator_trial(
+    trial_class: "Type[det.estimator.EstimatorTrial]", info: det.ClusterInfo, env: det.EnvContext
+) -> int:
+    from determined import estimator
+
+    det.common.set_logger(env.debug)
+    logging.debug("Starting harness.")
+
+    with maybe_periodic_stacktraces(env.debug):
+        distributed_backend = det._DistributedBackend()
+        estimator.EstimatorTrialController.pre_execute_hook(env, distributed_backend)
+
+        distributed = None
+        if distributed_backend.use_horovod():
+            distributed = core.DistributedContext.from_horovod(horovod.hvd)
+        elif len(info.container_addrs) > 1 or len(info.slot_ids) > 1:
+            raise ValueError(
+                "In multi-slot tasks for EstimatorTrial, the determined.exec.harness module must "
+                "be wrapped in the following launch layer: determined.launch.horovod."
+            )
+
+        with core.init(
+            distributed=distributed,
+            preempt_mode=core.PreemptMode.ChiefOnly,
+            tensorboard_mode=core.TensorboardMode.MANUAL,
+        ) as core_context:
+            trial_context = estimator.EstimatorTrialContext(core_context, env)
+            trial_inst = trial_class(trial_context)
+
+            logging.info(
+                f"Creating {estimator.EstimatorTrialController.__name__} with "
+                f"{trial_class.__name__}."
+            )
+            controller = estimator.EstimatorTrialController(
+                estimator=trial_inst.build_estimator(),
+                user_train_spec=trial_inst.build_train_spec(),
+                val_spec=trial_inst.build_validation_spec(),
+                serving_input_receiver_fns=trial_inst.build_serving_input_receiver_fns(),
+                context=trial_context,
+                env=env,
+            )
+
+            controller.run()
+    return 0
+
+
+def _run_deepspeed_trial(
+    trial_class: "Type[det.pytorch.DeepspeedTrial]", info: det.ClusterInfo, env: det.EnvContext
+) -> int:
+    from determined.pytorch import deepspeed
+
+    det.common.set_logger(env.debug)
+    logging.debug("Starting harness.")
+
+    with maybe_periodic_stacktraces(env.debug):
+        distributed_backend = det._DistributedBackend()
+        deepspeed.DeepSpeedTrialController.pre_execute_hook(env, distributed_backend)
+
+        distributed = None
+        if distributed_backend.use_deepspeed():
+            distributed = core.DistributedContext.from_deepspeed()
+        elif len(info.container_addrs) > 1 or len(info.slot_ids) > 1:
+            raise ValueError(
+                "In multi-slot tasks for DeepspeedTrial, the determined.exec.harness module must "
+                "be wrapped in the following launch layer: determined.launch.deepspeed."
+            )
+
+        with core.init(
+            distributed=distributed,
+            preempt_mode=core.PreemptMode.ChiefOnly,
+            tensorboard_mode=core.TensorboardMode.MANUAL,
+        ) as core_context:
+            trial_context = deepspeed.DeepSpeedTrialContext(core_context, env)
+            trial_inst = trial_class(trial_context)
+
+            logging.info(
+                f"Creating {deepspeed.DeepSpeedTrialController.__name__} with "
+                f"{trial_class.__name__}."
+            )
+            controller = deepspeed.DeepSpeedTrialController(
+                trial_inst=trial_inst,
+                context=trial_context,
+                env=env,
+            )
+
+            controller.run()
     return 0
 
 

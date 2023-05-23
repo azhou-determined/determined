@@ -267,35 +267,27 @@ class TFKerasTrialController(det.TrialController):
     @classmethod
     def from_trial(
         cls: Type["TFKerasTrialController"],
-        trial_inst: det.Trial,
-        context: det.TrialContext,
+        trial_inst: "TFKerasTrial",
+        context: det.keras.TFKerasTrialContext,
         env: det.EnvContext,
         workloads: Optional[workload.Stream] = None,
     ) -> det.TrialController:
-        check.is_instance(
-            context, keras.TFKerasTrialContext, "TFKerasTrialController needs a TFKerasTrialContext"
-        )
-        context = cast(keras.TFKerasTrialContext, context)
-
-        check.is_instance(trial_inst, TFKerasTrial, "TFKerasTrialController needs a TFKerasTrial")
-        trial = cast(TFKerasTrial, trial_inst)
-
         # Keras only supports horovod backend for distributed training
         session = cls._configure_session(
-            env, trial.session_config(), use_horovod=context.distributed.size > 1
+            env, trial_inst.session_config(), use_horovod=context.distributed.size > 1
         )
 
         training_data = keras._adapt_data_from_data_loader(
-            input_data=trial.build_training_data_loader(),
+            input_data=trial_inst.build_training_data_loader(),
             batch_size=context.get_per_slot_batch_size(),
         )
 
         validation_data = keras._adapt_data_from_data_loader(
-            input_data=trial.build_validation_data_loader(),
+            input_data=trial_inst.build_validation_data_loader(),
             batch_size=context.get_per_slot_batch_size(),
         )
 
-        trial.build_model()
+        trial_inst.build_model()
         check.is_not_none(context.model, "Please call wrap_model(...).")
 
         check.is_not_none(context.compile_args, "Please call model.compile(...).")
@@ -303,13 +295,13 @@ class TFKerasTrialController(det.TrialController):
 
         cls.compile_model(context=context, compile_args=compile_args, env=env)
 
-        tf_keras_callbacks = trial.keras_callbacks()
+        tf_keras_callbacks = trial_inst.keras_callbacks()
 
         return cls(
             context.model,
             session,
             keras.TFKerasTrainConfig(training_data, validation_data, tf_keras_callbacks),
-            trial,
+            trial_inst,
             context,
             env,
             workloads,

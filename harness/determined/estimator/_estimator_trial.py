@@ -497,38 +497,6 @@ class EstimatorTrialController(det.TrialController):
         )
         tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=session_config))
 
-    @classmethod
-    def from_trial(
-        cls: Type["EstimatorTrialController"],
-        trial_inst: det.Trial,
-        context: det.TrialContext,
-        env: det.EnvContext,
-        *args: Any,
-        **kwargs: Any,
-    ) -> det.TrialController:
-        check.is_instance(
-            context,
-            estimator.EstimatorTrialContext,
-            "EstimatorTrialController needs an EstimatorTrialContext",
-        )
-        context = cast(estimator.EstimatorTrialContext, context)
-
-        check.is_instance(
-            trial_inst, EstimatorTrial, "EstimatorTrialController needs an EstimatorTrial"
-        )
-        trial_inst = cast(EstimatorTrial, trial_inst)
-
-        return cls(
-            trial_inst.build_estimator(),
-            trial_inst.build_train_spec(),
-            trial_inst.build_validation_spec(),
-            trial_inst.build_serving_input_receiver_fns(),
-            context,
-            env,
-            *args,
-            **kwargs,
-        )
-
     def _check_and_repeat_train_input_fn(self, f: Callable) -> Callable:
         """
         Modifies functions that returns a `tf.data.Dataset` to repeat. This is done

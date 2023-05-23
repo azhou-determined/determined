@@ -32,14 +32,9 @@ ds_loader.RepeatingLoader.__len__ = get_length
 
 
 class DeepSpeedTrialController(det.TrialController):
-    def __init__(self, trial_inst: det.Trial, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, trial_inst: "DeepSpeedTrial", *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-
-        assert isinstance(
-            trial_inst, DeepSpeedTrial
-        ), "DeepSpeedTrialController needs a DeepSpeedTrial"
         self.trial = trial_inst
-        self.context = cast(det_ds.DeepSpeedTrialContext, self.context)
         self.context._set_determined_profiler(self.prof)
         if torch.cuda.is_available():
             self.prof._set_sync_device(self._sync_device)
@@ -90,12 +85,6 @@ class DeepSpeedTrialController(det.TrialController):
         random.seed(env.trial_seed)
         np.random.seed(env.trial_seed)
         torch.random.manual_seed(env.trial_seed)
-
-    @classmethod
-    def from_trial(
-        cls: Type["DeepSpeedTrialController"], *args: Any, **kwargs: Any
-    ) -> det.TrialController:
-        return cls(*args, **kwargs)
 
     def _set_data_loaders(self) -> None:
         skip_batches = self.env.steps_completed

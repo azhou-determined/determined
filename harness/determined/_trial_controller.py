@@ -75,20 +75,6 @@ class TrialController(metaclass=abc.ABCMeta):
         """
         pass
 
-    @classmethod
-    @abc.abstractmethod
-    def from_trial(
-        cls: Type["TrialController"],
-        trial_inst: "det.Trial",
-        context: det.TrialContext,
-        env: det.EnvContext,
-        workloads: Optional[workload.Stream] = None,
-    ) -> "TrialController":
-        """
-        Create a TrialController from an instantiated framework-matched Trial.
-        """
-        pass
-
     @abc.abstractmethod
     def run(self) -> None:
         """
