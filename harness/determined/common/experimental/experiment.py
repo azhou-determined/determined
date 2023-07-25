@@ -2,7 +2,8 @@ import enum
 import sys
 import time
 import warnings
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, Set
+from urllib import parse
 
 from determined.common import api
 from determined.common.api import bindings
@@ -85,6 +86,7 @@ class Experiment:
             is 100% completion.
         description: (Mutable, string) Description of the experiment.
         notes: (Mutable, str) Notes for the experiment.
+        labels: (Mutable, Optional[List]) Labels associated with the experiment.
 
     Note:
         All attributes are cached by default.
@@ -104,6 +106,7 @@ class Experiment:
         # These properties may be mutable and will be set by _hydrate()
         self.config: Optional[Dict[str, Any]] = None
         self.state: Optional[bindings.experimentv1State] = None
+        self.labels: Optional[Set[str]] = None
         self.archived: Optional[bool] = None
         self.name: Optional[str] = None
         self.progress: Optional[float] = None
@@ -122,6 +125,7 @@ class Experiment:
         self.progress = exp.progress
         self.description = exp.description
         self.notes = exp.notes
+        self.labels = set(exp.labels) if exp.labels else None
 
     def reload(self) -> None:
         """
@@ -147,6 +151,55 @@ class Experiment:
         req_body = bindings.v1PatchExperiment(id=self.id, notes=notes)
         resp = bindings.patch_PatchExperiment(self._session, experiment_id=self.id, body=req_body)
         self.notes = resp.experiment.notes if resp.experiment else None
+
+    def add_label(self, label: str) -> None:
+        """Add a label to the experiment.
+
+        Makes a PUT request to the master and sets ``self.labels`` to the server's updated
+            labels.
+
+        Arguments:
+            label: a string label to add to the experiment. If the label already exists,
+                the method call will be a no-op.
+        """
+        # URL-encode label for request.
+        label = parse.quote(label)
+        resp = bindings.put_PutExperimentLabel(
+            session=self._session, experimentId=self.id, label=label
+        )
+        self.labels = set(resp.labels)
+
+    def remove_label(self, label: str) -> None:
+        """Removes a label from the experiment.
+
+        Makes a DELETE request to the master and sets ``self.labels`` to the server's updated
+            labels.
+
+        Arguments:
+            label: a string label to remove from the experiment. If the specified label does not
+                exist on the experiment, this method call will be a no-op.
+        """
+        # URL-encode label for request.
+        label = parse.quote(label)
+        resp = bindings.delete_DeleteExperimentLabel(
+            session=self._session, experimentId=self.id, label=label
+        )
+        self.labels = set(resp.labels)
+
+    def set_labels(self, labels: Set[str]) -> None:
+        """Sets experiment labels to the given set.
+
+        This method makes a PATCH request to the master and sets ``self.labels`` to the server's
+            response. This will overwrite any existing labels on the experiment with the specified
+            labels.
+
+        Arguments:
+            labels: a set of string labels to set on the experiment.
+        """
+        patch_exp = bindings.v1PatchExperiment(id=self.id, labels=list(labels))
+        resp = bindings.patch_PatchExperiment(self._session, body=patch_exp, experiment_id=self.id)
+        assert resp.experiment
+        self.labels = set(resp.experiment.labels) if resp.experiment.labels else None
 
     def activate(self) -> None:
         bindings.post_ActivateExperiment(self._session, id=self._id)
