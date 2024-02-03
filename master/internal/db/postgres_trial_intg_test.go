@@ -397,6 +397,29 @@ func generateSummaryMetricsTestCases(
 	return trialIDs, expectedTrain, expectedVal
 }
 
+func TestAddTrialMetrics(t *testing.T) {
+	ctx := context.Background()
+	db := MustResolveTestPostgres(t)
+	user := RequireMockUser(t, db)
+	exp := RequireMockExperiment(t, db, user)
+	mGroup := model.TrainingMetricGroup
+	trialID := RequireMockTrialID(t, db, exp)
+	m := map[string]interface{}{
+		"loss": 0.123,
+	}
+	metrics, err := structpb.NewStruct(m)
+	require.NoError(t, err)
+	_, err = db.addTrialMetrics(ctx, &trialv1.TrialMetrics{
+		TrialId:    int32(trialID),
+		TrialRunId: 0,
+		//StepsCompleted: int32(1),
+		Metrics: &commonv1.Metrics{
+			AvgMetrics: metrics,
+		},
+	}, mGroup)
+	require.NoError(t, err)
+}
+
 type summaryMetrics struct {
 	Name  string
 	Min   float64

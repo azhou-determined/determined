@@ -17,6 +17,8 @@ const (
 	TrainingMetricGroup MetricGroup = "training"
 	// InferenceMetricGroup designates metrics from inference runs.
 	InferenceMetricGroup MetricGroup = "inference"
+	// ProfilingMetricGroup designates metrics from training runs.
+	ProfilingMetricGroup MetricGroup = "profiling"
 )
 
 type metricName string
@@ -44,6 +46,8 @@ func (t MetricGroup) ToProto() apiv1.MetricType {
 		return apiv1.MetricType_METRIC_TYPE_VALIDATION
 	case TrainingMetricGroup:
 		return apiv1.MetricType_METRIC_TYPE_TRAINING
+	case ProfilingMetricGroup:
+		return apiv1.MetricType_METRIC_TYPE_PROFILING
 	default:
 		return apiv1.MetricType_METRIC_TYPE_UNSPECIFIED
 	}

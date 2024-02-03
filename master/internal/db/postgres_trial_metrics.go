@@ -17,19 +17,6 @@ import (
 	"github.com/determined-ai/determined/proto/pkg/trialv1"
 )
 
-// MetricPartitionType denotes what type the metric is. This is planned to be deprecated
-// once we upgrade to pg11 and can use DEFAULT partitioning.
-type MetricPartitionType string
-
-const (
-	// TrainingMetric designates metrics from training steps.
-	TrainingMetric MetricPartitionType = "TRAINING"
-	// ValidationMetric designates metrics from validation steps.
-	ValidationMetric MetricPartitionType = "VALIDATION"
-	// GenericMetric designates metrics from other sources.
-	GenericMetric MetricPartitionType = "GENERIC"
-)
-
 type metricsBody struct {
 	BatchMetrics interface{}
 	AvgMetrics   *structpb.Struct

@@ -346,6 +346,110 @@ func (db *PgDB) updateTotalBatches(ctx context.Context, tx *sqlx.Tx, trialID int
 	return nil
 }
 
+func (db *PgDB) _addTrialProfilingMetricsTx(
+	ctx context.Context, tx *sqlx.Tx, m *trialv1.TrialMetrics, mGroup model.MetricGroup,
+) (rollbacks int, err error) {
+	isValidation := mGroup == model.ValidationMetricGroup
+	mBody := newMetricsBody(m.Metrics.AvgMetrics, m.Metrics.BatchMetrics, isValidation)
+
+	if err := checkTrialRunID(ctx, tx, m.TrialId, m.TrialRunId); err != nil {
+		return rollbacks, err
+	}
+
+	switch {
+	case rollbacks != 0:
+		if err := db.updateTotalBatches(ctx, tx, int(m.TrialId)); err != nil {
+			return rollbacks, errors.Wrap(err, "rollback")
+		}
+
+		if err := db.updateLatestValidationID(ctx, tx, int(m.TrialId)); err != nil {
+			return rollbacks, fmt.Errorf(
+				"rollback updating latest validation ID for trial %d: %w", m.TrialId, err)
+		}
+
+		if err := db.fullTrialSummaryMetricsRecompute(ctx, tx, int(m.TrialId)); err != nil {
+			return rollbacks, errors.Wrap(err, "error on rollback compute of summary metrics")
+		}
+	default: // no rollbacks happened.
+		summaryMetricsJSONPath := model.TrialSummaryMetricsJSONPath(mGroup)
+		if _, ok := summaryMetrics[summaryMetricsJSONPath]; !ok {
+			summaryMetrics[summaryMetricsJSONPath] = map[string]any{}
+		}
+
+		var summaryMetricsForGroup map[string]any
+		switch v := summaryMetrics[summaryMetricsJSONPath].(type) {
+		case model.JSONObj:
+			summaryMetricsForGroup = map[string]any(v)
+		case map[string]any:
+			summaryMetricsForGroup = v
+		default:
+			log.Errorf("summary metric "+
+				"%+v path %s type %T value %+v is not a map, setting to empty map",
+				summaryMetrics,
+				summaryMetricsJSONPath,
+				summaryMetrics[summaryMetricsJSONPath],
+				summaryMetrics[summaryMetricsJSONPath],
+			)
+
+			summaryMetricsForGroup = make(map[string]any)
+		}
+		summaryMetrics[summaryMetricsJSONPath] = calculateNewSummaryMetrics(
+			summaryMetricsForGroup,
+			addedMetrics.AvgMetrics,
+		)
+
+		var latestValidationID *int
+		if isValidation {
+			var searcherMetric *string
+			if err := tx.QueryRowContext(ctx, `
+		SELECT experiments.config->'searcher'->>'metric' AS metric_name
+		FROM experiments
+		JOIN trials t ON t.experiment_id = experiments.id
+		WHERE t.id = $1`, int(m.TrialId)).Scan(&searcherMetric); err != nil {
+				return rollbacks, fmt.Errorf("getting trial's searcher metric: %w", err)
+			}
+			if searcherMetric != nil &&
+				m.Metrics.AvgMetrics.Fields[*searcherMetric].AsInterface() != nil {
+				latestValidationID = &metricRowID
+			}
+		}
+
+		for k, v := range summaryMetrics {
+			switch v := v.(type) {
+			case model.JSONObj, map[string]any:
+			default:
+				log.Errorf("when updating summary metric "+
+					"%+v path %s type %T value %+v is not a map, setting to empty map",
+					summaryMetrics,
+					k,
+					v,
+					v,
+				)
+				summaryMetrics[k] = model.JSONObj{}
+			}
+		}
+
+		if _, err := tx.ExecContext(ctx, `
+UPDATE runs SET total_batches = GREATEST(total_batches, $2),
+summary_metrics = $3, summary_metrics_timestamp = NOW(),
+latest_validation_id = coalesce($4, latest_validation_id)
+WHERE id = $1;
+`, m.TrialId, m.StepsCompleted, summaryMetrics, latestValidationID); err != nil {
+			return rollbacks, errors.Wrap(err, "updating trial total batches")
+		}
+	}
+
+	if isValidation {
+		if err := setTrialBestValidation(
+			tx, int(m.TrialId),
+			int(m.TrialRunId),
+			int(m.StepsCompleted)); err != nil {
+			return rollbacks, errors.Wrap(err, "updating trial best validation")
+		}
+	}
+	return rollbacks, nil
+}
+
 func (db *PgDB) _addTrialMetricsTx(
 	ctx context.Context, tx *sqlx.Tx, m *trialv1.TrialMetrics, mGroup model.MetricGroup,
 ) (rollbacks int, err error) {
