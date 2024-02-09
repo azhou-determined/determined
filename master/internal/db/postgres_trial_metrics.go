@@ -162,7 +162,7 @@ FOR UPDATE`,
 	needsMerge := existingBodyJSON != nil
 
 	if !needsMerge {
-		id, err := db.addRawMetrics(ctx, tx, mBody, runID, trialID, lastProcessedBatch, mGroup)
+		id, err := db.addRawMetrics(ctx, tx, mBody, runID, trialID, &lastProcessedBatch, mGroup)
 		return id, mBody, err
 	}
 
@@ -208,26 +208,38 @@ RETURNING id`,
 
 // addRawMetrics inserts a set of raw metrics to the database and returns the metric id.
 func (db *PgDB) addRawMetrics(ctx context.Context, tx *sqlx.Tx, mBody *metricsBody,
-	runID, trialID, lastProcessedBatch int32, mGroup model.MetricGroup,
+	runID, trialID int32, lastProcessedBatch *int32, mGroup model.MetricGroup,
 ) (int, error) {
 	if err := mGroup.Validate(); err != nil {
 		return 0, err
 	}
 	metricGroup := string(mGroup)
 	pType := customMetricGroupToPartitionType(&metricGroup)
-
 	var metricRowID int
 	// ON CONFLICT clause is not supported with partitioned tables (SQLSTATE 0A000)
 	//nolint:execinquery // we want to get the id.
-	if err := tx.QueryRowContext(ctx, `
+	if lastProcessedBatch != nil {
+		if err := tx.QueryRowContext(ctx, `
 INSERT INTO metrics
 	(trial_id, trial_run_id, end_time, metrics, total_batches, partition_type, metric_group)
 VALUES
 	($1, $2, now(), $3, $4, $5, $6)
 RETURNING id`,
-		trialID, runID, *mBody.ToJSONObj(), lastProcessedBatch, pType, mGroup,
-	).Scan(&metricRowID); err != nil {
-		return metricRowID, errors.Wrap(err, "inserting metrics")
+			trialID, runID, *mBody.ToJSONObj(), *lastProcessedBatch, pType, mGroup,
+		).Scan(&metricRowID); err != nil {
+			return metricRowID, errors.Wrap(err, "inserting metrics")
+		}
+	} else {
+		if err := tx.QueryRowContext(ctx, `
+INSERT INTO metrics
+	(trial_id, trial_run_id, end_time, metrics, partition_type, metric_group)
+VALUES
+	($1, $2, now(), $3, $4, $5)
+RETURNING id`,
+			trialID, runID, *mBody.ToJSONObj(), pType, mGroup,
+		).Scan(&metricRowID); err != nil {
+			return metricRowID, errors.Wrap(err, "inserting metrics")
+		}
 	}
 
 	return metricRowID, nil
@@ -244,6 +256,8 @@ func customMetricGroupToPartitionType(mGroup *string) MetricPartitionType {
 		return TrainingMetric
 	case model.ValidationMetricGroup:
 		return ValidationMetric
+	case model.ProfilingMetricGroup:
+		return ProfilingMetric
 	default:
 		return GenericMetric
 	}
