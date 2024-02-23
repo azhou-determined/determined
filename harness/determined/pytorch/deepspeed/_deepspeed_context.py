@@ -264,17 +264,6 @@ class DeepSpeedTrialContext(det.TrialContext, pytorch._PyTorchReducerContext):
             )
         return self._num_micro_batches_per_slot
 
-    def _set_determined_profiler(self, prof: profiler.ProfilerAgent) -> None:
-        self._determined_profiler = prof
-
-    @contextlib.contextmanager
-    def _record_timing(self, metric_name: str, accumulate: bool = False) -> Iterator[None]:
-        if not self._determined_profiler:
-            yield
-            return
-        with self._determined_profiler.record_timing(metric_name, accumulate):
-            yield
-
     def _init_device(self) -> None:
         self.n_gpus = len(self.env.container_gpus)
         if not self.n_gpus:
@@ -293,8 +282,7 @@ class DeepSpeedTrialContext(det.TrialContext, pytorch._PyTorchReducerContext):
         for DeepSpeedTrial, the user is responsible for moving data to GPU if needed.  This is
         basically a helper function to make that easier.
         """
-        with self._record_timing("to_device", accumulate=True):
-            return pytorch.to_device(data, self.device, self._to_device_warned_types)
+        return pytorch.to_device(data, self.device, self._to_device_warned_types)
 
     def is_epoch_start(self) -> bool:
         """

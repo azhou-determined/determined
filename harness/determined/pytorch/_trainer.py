@@ -9,7 +9,7 @@ import torch
 import torch.distributed as dist
 
 import determined as det
-from determined import core, gpu, horovod, profiler, pytorch
+from determined import core, gpu, horovod, pytorch
 from determined.horovod import hvd
 
 logger = logging.getLogger("determined.pytorch")
@@ -29,7 +29,6 @@ class Trainer:
         self._context = context
         self._core = self._context._core
         self._distributed_backend = det._DistributedBackend()
-        self._det_profiler = None  # type: Optional[profiler.ProfilerAgent]
         self._info = det.get_cluster_info()
         self._local_training = self._info is None or self._info.task_type != "TRIAL"
 
@@ -62,23 +61,8 @@ class Trainer:
            Profiles are collected for a maximum of 5 minutes, regardless of the settings above.
 
         """
-        if self._local_training:
-            self._det_profiler = profiler.DummyProfilerAgent()
-            return
-
-        assert self._info, "Determined profiler must be run on cluster."
-
-        self._det_profiler = profiler.ProfilerAgent(
-            trial_id=str(self._info.trial.trial_id),
-            agent_id=self._info.agent_id,
-            master_url=self._info.master_url,
-            profiling_is_enabled=enabled,
-            global_rank=self._core.distributed.get_rank(),
-            local_rank=self._core.distributed.get_local_rank(),
-            begin_on_batch=begin_on_batch,
-            end_after_batch=end_after_batch,
-            sync_timings=sync_timings,
-        )
+        # xxx: deprecate this method
+        pass
 
     def fit(
         self,
@@ -90,6 +74,7 @@ class Trainer:
         latest_checkpoint: Optional[str] = None,
         step_zero_validation: bool = False,
         test_mode: bool = False,
+        profiling_enabled: bool = False,
     ) -> None:
         """
         ``fit()`` trains a ``PyTorchTrial`` configured from the ``Trainer`` and handles
@@ -162,6 +147,9 @@ class Trainer:
             if self._det_profiler:
                 logger.warning("Determined profiler will be ignored in local training mode.")
 
+            if profiling_enabled:
+                logger.warning("Profiling is not supported in local training mode.")
+
             smaller_is_better = True
             searcher_metric_name = None
             steps_completed = 0
@@ -206,8 +194,8 @@ class Trainer:
             checkpoint_policy=checkpoint_policy,
             step_zero_validation=step_zero_validation,
             max_length=max_length,
-            det_profiler=self._det_profiler,
             global_batch_size=global_batch_size,
+            profiling_enabled=profiling_enabled,
         )
 
         trial_controller.run()

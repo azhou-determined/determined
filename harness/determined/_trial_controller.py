@@ -44,17 +44,12 @@ class TrialController(metaclass=abc.ABCMeta):
         # The only time that workloads should be non-None here is unit tests or test mode.
         self.workloads = workloads
 
-        self.prof = profiler.ProfilerAgent.from_env(
-            env,
-            global_rank=context.distributed.rank,
-            local_rank=context.distributed.local_rank,
-        )
-
         distributed_backend = _DistributedBackend()
         self.use_horovod = distributed_backend.use_horovod()
         self.use_torch = distributed_backend.use_torch()
 
         self.scheduling_unit = self.env.experiment_config.scheduling_unit()
+        self.profiling_enabled = self.env.experiment_config.profiling_enabled()
 
         self.is_chief = context.distributed.rank == 0
 
