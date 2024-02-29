@@ -42,14 +42,16 @@ func addMetrics(ctx context.Context,
 
 	trialRunID := 0
 	for i, m := range trainMetrics {
+		step := int32(i + 1)
 		if archive && i == len(trainMetrics)-1 {
 			// Add step that will be archived.
 			metrics, err := structpb.NewStruct(map[string]any{"archive_metric_dont_appear": "3.14"})
 			require.NoError(t, err)
+
 			require.NoError(t, db.AddTrainingMetrics(ctx, &trialv1.TrialMetrics{
 				TrialId:        int32(trialID),
 				TrialRunId:     int32(trialRunID),
-				StepsCompleted: int32(i) + 1,
+				StepsCompleted: &step,
 				Metrics: &commonv1.Metrics{
 					AvgMetrics: metrics,
 				},
@@ -63,7 +65,7 @@ func addMetrics(ctx context.Context,
 		require.NoError(t, db.AddTrainingMetrics(ctx, &trialv1.TrialMetrics{
 			TrialId:        int32(trialID),
 			TrialRunId:     int32(trialRunID),
-			StepsCompleted: int32(i) + 1,
+			StepsCompleted: &step,
 			Metrics: &commonv1.Metrics{
 				AvgMetrics: metrics,
 			},
@@ -73,6 +75,7 @@ func addMetrics(ctx context.Context,
 	var valMetrics []map[string]any
 	require.NoError(t, json.Unmarshal([]byte(valMetricsJSON), &valMetrics))
 	for i, m := range valMetrics {
+		step := int32(i + len(trainMetrics))
 		if archive && i == len(valMetrics)-1 {
 			// Add step that will be archived.
 			metrics, err := structpb.NewStruct(map[string]any{"archive_metric_dont_appear": "3.14"})
@@ -80,7 +83,7 @@ func addMetrics(ctx context.Context,
 			require.NoError(t, db.AddValidationMetrics(ctx, &trialv1.TrialMetrics{
 				TrialId:        int32(trialID),
 				TrialRunId:     int32(trialRunID),
-				StepsCompleted: int32(i + len(trainMetrics)),
+				StepsCompleted: &step,
 				Metrics: &commonv1.Metrics{
 					AvgMetrics: metrics,
 				},
@@ -94,7 +97,7 @@ func addMetrics(ctx context.Context,
 		require.NoError(t, db.AddValidationMetrics(ctx, &trialv1.TrialMetrics{
 			TrialId:        int32(trialID),
 			TrialRunId:     int32(trialRunID),
-			StepsCompleted: int32(i + len(trainMetrics)),
+			StepsCompleted: &step,
 			Metrics: &commonv1.Metrics{
 				AvgMetrics: metrics,
 			},
@@ -114,10 +117,11 @@ func addTestTrialMetrics(ctx context.Context,
 		for i, m := range metrics {
 			metrics, err := structpb.NewStruct(m)
 			require.NoError(t, err)
+			step := int32(i + 1)
 			_, err = db.addTrialMetrics(ctx, &trialv1.TrialMetrics{
 				TrialId:        int32(trialID),
 				TrialRunId:     int32(trialRunID),
-				StepsCompleted: int32(i + 1),
+				StepsCompleted: &step,
 				Metrics: &commonv1.Metrics{
 					AvgMetrics: metrics,
 				},
@@ -471,12 +475,12 @@ func TestEpochMetricGroups(t *testing.T) {
 				"epoch": c.epochValue,
 			})
 			require.NoError(t, err)
-
+			step := int32(1)
 			if reportTraining {
 				require.Equal(t, c.err, db.AddTrainingMetrics(ctx, &trialv1.TrialMetrics{
 					TrialId:        int32(trial),
 					TrialRunId:     0,
-					StepsCompleted: 1,
+					StepsCompleted: &step,
 					Metrics: &commonv1.Metrics{
 						AvgMetrics: metrics,
 					},
@@ -485,7 +489,7 @@ func TestEpochMetricGroups(t *testing.T) {
 				require.Equal(t, c.err, db.AddValidationMetrics(ctx, &trialv1.TrialMetrics{
 					TrialId:        int32(trial),
 					TrialRunId:     0,
-					StepsCompleted: 1,
+					StepsCompleted: &step,
 					Metrics: &commonv1.Metrics{
 						AvgMetrics: metrics,
 					},
@@ -574,10 +578,11 @@ func TestMetricMerge(t *testing.T) {
 		groupName model.MetricGroup,
 	) error {
 		trialRunID := 0
+		step := int32(batchNumber)
 		return db.AddTrialMetrics(ctx, &trialv1.TrialMetrics{
 			TrialId:        int32(trialID),
 			TrialRunId:     int32(trialRunID),
-			StepsCompleted: int32(batchNumber),
+			StepsCompleted: &step,
 			Metrics: &commonv1.Metrics{
 				AvgMetrics: jsonToStruct(t, metricsJSON),
 			},
@@ -597,6 +602,8 @@ func TestMetricMerge(t *testing.T) {
 			`{"a":1.0,"b":2.0,"list":[1.0,2.0]}`,
 		},
 	}
+
+	batches := 0
 
 	for _, c := range cases {
 		t.Log(c)
@@ -641,10 +648,11 @@ func TestGetAllMetrics(t *testing.T) {
 		groupName model.MetricGroup,
 	) error {
 		trialRunID := 0
+		step := int32(batchNumber)
 		require.NoError(t, db.AddTrialMetrics(ctx, &trialv1.TrialMetrics{
 			TrialId:        int32(trialID),
 			TrialRunId:     int32(trialRunID),
-			StepsCompleted: int32(batchNumber),
+			StepsCompleted: &step,
 			Metrics: &commonv1.Metrics{
 				AvgMetrics: jsonToStruct(t, metricsJSON),
 			},
@@ -659,6 +667,8 @@ func TestGetAllMetrics(t *testing.T) {
 		{[]string{`{"a":1.0}`, `{"b":2.0}`}},
 		{[]string{`{"a":1.0}`, `{"b":2.0}`, `{"c":2.0}`}},
 	}
+
+	batches := 0
 
 	for _, c := range cases {
 		t.Log(c)
@@ -691,10 +701,11 @@ func TestMetricMergeFail(t *testing.T) {
 
 	addMetricAt := func(batchNumber int, metricsJSON string, trialID int) error {
 		trialRunID := 0
+		step := int32(batchNumber)
 		return db.AddTrialMetrics(ctx, &trialv1.TrialMetrics{
 			TrialId:        int32(trialID),
 			TrialRunId:     int32(trialRunID),
-			StepsCompleted: int32(batchNumber),
+			StepsCompleted: &step,
 			Metrics: &commonv1.Metrics{
 				AvgMetrics: jsonToStruct(t, metricsJSON),
 			},
@@ -938,10 +949,11 @@ func TestAddValidationMetricsDupeCheckpoints(t *testing.T) {
 	require.NoError(t, AddAllocation(ctx, a))
 
 	// Report training metrics.
+	step := int32(50)
 	require.NoError(t, db.AddTrainingMetrics(ctx, &trialv1.TrialMetrics{
 		TrialId:        int32(tr.ID),
 		TrialRunId:     0,
-		StepsCompleted: 50,
+		StepsCompleted: &step,
 		Metrics:        &commonv1.Metrics{AvgMetrics: trainMetrics},
 	}))
 
@@ -967,7 +979,7 @@ func TestAddValidationMetricsDupeCheckpoints(t *testing.T) {
 	require.NoError(t, db.AddValidationMetrics(ctx, &trialv1.TrialMetrics{
 		TrialId:        int32(tr.ID),
 		TrialRunId:     1,
-		StepsCompleted: 50,
+		StepsCompleted: &step,
 		Metrics:        &commonv1.Metrics{AvgMetrics: valMetrics},
 	}))
 
@@ -981,10 +993,11 @@ func TestAddValidationMetricsDupeCheckpoints(t *testing.T) {
 	checkpoint2UUID := uuid.New()
 	valMetrics2, err := structpb.NewStruct(map[string]any{"loss": 1.5})
 	require.NoError(t, err)
+	step = int32(400)
 	require.NoError(t, db.AddValidationMetrics(ctx, &trialv1.TrialMetrics{
 		TrialId:        int32(tr.ID),
 		TrialRunId:     1,
-		StepsCompleted: 400,
+		StepsCompleted: &step,
 		Metrics:        &commonv1.Metrics{AvgMetrics: valMetrics2},
 	}))
 	require.NoError(t, AddCheckpointMetadata(ctx, &model.CheckpointV2{
@@ -1046,10 +1059,11 @@ func TestBatchesProcessedNRollbacks(t *testing.T) {
 		expectedRollbacks Rollbacks,
 	) error {
 		require.NoError(t, db.UpdateTrialFields(tr.ID, nil, trialRunId, 0))
+		step := int32(batches)
 		trialMetrics := &trialv1.TrialMetrics{
 			TrialId:        int32(tr.ID),
 			TrialRunId:     int32(trialRunId),
-			StepsCompleted: int32(batches),
+			StepsCompleted: &step,
 			Metrics:        &commonv1.Metrics{AvgMetrics: metrics},
 		}
 		t.Logf("Adding %s metrics: %v", typ, trialMetrics)
@@ -1194,19 +1208,20 @@ func TestGenericMetricsIO(t *testing.T) {
 
 	trialRunID := 1
 	batches := 10
+	step := int32(batches)
 	require.NoError(t, db.UpdateTrialFields(tr.ID, nil, trialRunID, 0))
 	trialMetrics := &trialv1.TrialMetrics{
 		TrialId:        int32(tr.ID),
 		TrialRunId:     int32(trialRunID),
-		StepsCompleted: int32(batches),
+		StepsCompleted: &step,
 		Metrics:        &commonv1.Metrics{AvgMetrics: metrics},
 	}
 	err = db.AddTrialMetrics(ctx, trialMetrics, "inference")
 	require.NoError(t, err)
 
 	metricGroup := "inference"
-
-	metricReports, err := GetMetrics(ctx, tr.ID, batches-1, 10, &metricGroup)
+	afterBatches := batches - 1
+	metricReports, err := GetMetrics(ctx, tr.ID, &afterBatches, nil, 10, &metricGroup)
 	require.NoError(t, err)
 	require.Len(t, metricReports, 1)
 	require.EqualValues(t, trialRunID, metricReports[0].TrialRunId)
@@ -1219,7 +1234,8 @@ func TestGenericMetricsIO(t *testing.T) {
 	metrics2, err := structpb.NewStruct(map[string]any{"aloss": 20, "bloss": 30})
 	require.NoError(t, err)
 	trialMetrics2 := trialMetrics
-	trialMetrics2.StepsCompleted = int32(batches * 2)
+	step = int32(batches * 2)
+	trialMetrics2.StepsCompleted = &step
 	trialMetrics2.Metrics = &commonv1.Metrics{AvgMetrics: metrics2}
 	err = db.AddTrialMetrics(ctx, trialMetrics, "inference")
 	require.NoError(t, err)
@@ -1326,9 +1342,10 @@ func TestConcurrentMetricUpdate(t *testing.T) {
 		batchNum.Add(1)
 		metrics, err := structpb.NewStruct(map[string]any{"loss": 10})
 		require.NoError(t, err)
+		step := int32(batchNum.Load())
 		trialMetrics := &trialv1.TrialMetrics{
 			TrialId:        int32(tr.ID),
-			StepsCompleted: int32(batchNum.Load()),
+			StepsCompleted: &step,
 			Metrics:        &commonv1.Metrics{AvgMetrics: metrics},
 		}
 		if coinFlip() {

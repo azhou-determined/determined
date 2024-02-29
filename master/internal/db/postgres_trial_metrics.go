@@ -256,15 +256,14 @@ func customMetricGroupToPartitionType(mGroup *string) MetricPartitionType {
 		return GenericMetric
 	}
 	group := model.MetricGroup(*mGroup)
-	switch group {
-	case model.TrainingMetricGroup:
+	switch {
+	case group == model.TrainingMetricGroup:
 		return TrainingMetric
-	case model.ValidationMetricGroup:
+	case group == model.ValidationMetricGroup:
 		return ValidationMetric
+	case slices.Contains(model.ProfilingMetricGroups, group):
+		return ProfilingMetric
 	default:
-		if slices.Contains(model.ProfilingMetricGroups, group) {
-			return ProfilingMetric
-		}
 		return GenericMetric
 	}
 }

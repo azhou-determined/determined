@@ -370,14 +370,14 @@ func (db *PgDB) updateTotalBatches(ctx context.Context, tx *sqlx.Tx, trialID int
 
 func (db *PgDB) _addTrialProfilingMetricsTx(
 	ctx context.Context, tx *sqlx.Tx, m *trialv1.TrialMetrics, mGroup model.MetricGroup,
-) (rollbacks int, err error) {
+) error {
 	if err := checkTrialRunID(ctx, tx, m.TrialId, m.TrialRunId); err != nil {
-		return rollbacks, err
+		return err
 	}
 
 	metrics := model.JSONObj(m.Metrics.AvgMetrics.AsMap())
-	_, err = db.addRawMetrics(ctx, tx, &metrics, tryAsTime(m.ReportTime), m.TrialRunId, m.TrialId, nil, mGroup)
-	return rollbacks, nil
+	_, err := db.addRawMetrics(ctx, tx, &metrics, tryAsTime(m.ReportTime), m.TrialRunId, m.TrialId, nil, mGroup)
+	return err
 }
 
 func (db *PgDB) _addTrialMetricsTx(
@@ -515,7 +515,7 @@ func (db *PgDB) addTrialMetrics(
 		func(tx *sqlx.Tx) error {
 			switch {
 			case slices.Contains(model.ProfilingMetricGroups, mGroup):
-				rollbacks, err = db._addTrialProfilingMetricsTx(ctx, tx, m, mGroup)
+				err = db._addTrialProfilingMetricsTx(ctx, tx, m, mGroup)
 			default:
 				rollbacks, err = db._addTrialMetricsTx(ctx, tx, m, mGroup)
 			}
