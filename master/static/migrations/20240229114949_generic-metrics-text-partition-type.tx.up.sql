@@ -66,7 +66,7 @@ ALTER TABLE generic_metrics ALTER COLUMN partition_type SET DEFAULT 'GENERIC';
 
 
 -- Drop `metric_partition_type` enum.
-DROP TYPE metric_partition_type;
+DROP TYPE IF EXISTS metric_partition_type;
 
 
 -- Add CHECK constraint on `partition_type` to child partitions
