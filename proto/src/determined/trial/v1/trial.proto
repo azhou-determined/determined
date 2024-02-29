@@ -265,7 +265,6 @@ message MetricsReport {
         "trial_id",
         "end_time",
         "metrics",
-        "total_batches",
         "archived",
         "id",
         "trial_run_id",
@@ -280,7 +279,7 @@ message MetricsReport {
   // Struct of the reported metrics.
   google.protobuf.Struct metrics = 3;
   // batches completed in the report.
-  int32 total_batches = 4;
+  optional int32 total_batches = 4;
   // If metric is archived.
   bool archived = 5;
   // ID of metric in table.

@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/uptrace/bun"
@@ -615,12 +617,12 @@ func TestMetricMerge(t *testing.T) {
 			// query only for the training metrics
 			err = addMetricAt(1, metricReport, trialID, model.ValidationMetricGroup)
 			require.NoError(t, err)
-			metrics, err := GetMetrics(ctx, trialID, 0, 100, &metricGroup)
+			metrics, err := GetMetrics(ctx, trialID, &batches, nil, 100, &metricGroup)
 			require.NoError(t, err)
 			require.Len(t, metrics, 1)
 			require.Equal(t, metrics[0].Group, string(mGroup))
 		}
-		metrics, err := GetMetrics(ctx, trialID, 0, 100, &metricGroup)
+		metrics, err := GetMetrics(ctx, trialID, &batches, nil, 100, &metricGroup)
 		require.NoError(t, err)
 		require.Len(t, metrics, 1)
 		require.Equal(t, metrics[0].Group, string(mGroup))
@@ -680,7 +682,7 @@ func TestGetAllMetrics(t *testing.T) {
 			require.NoError(t, err)
 			err = addMetricAt(1, metricReport, trialID, model.MetricGroup("inference"))
 			require.NoError(t, err)
-			metrics, err := GetMetrics(ctx, trialID, 0, 100, nil)
+			metrics, err := GetMetrics(ctx, trialID, &batches, nil, 100, nil)
 			require.NoError(t, err)
 			// We added three different metric groups and then queried for an empty group
 			// which should yield all metrics
@@ -731,6 +733,112 @@ func TestMetricMergeFail(t *testing.T) {
 				require.NoError(t, err)
 			}
 		}
+	}
+}
+
+func setup(t *testing.T) (context.Context, *PgDB) {
+	ctx := context.Background()
+	require.NoError(t, etc.SetRootPath(RootFromDB))
+	db := MustResolveTestPostgres(t)
+	MustMigrateTestPostgres(t, db, MigrationsFromDB)
+	return ctx, db
+}
+
+func TestAddGetTrialMetrics(t *testing.T) {
+	ctx, db := setup(t)
+	user := RequireMockUser(t, db)
+	exp := RequireMockExperiment(t, db, user)
+	trialID := RequireMockTrialID(t, db, exp)
+	metrics, err := structpb.NewStruct(map[string]any{
+		"a": 1.0,
+		"b": 2.0,
+		"c": 3.0,
+	})
+	require.NoError(t, err)
+
+	step := int32(1)
+	reportTime := timestamppb.Now()
+
+	nullConstraintError := "violates not-null constraint"
+	testCases := []struct {
+		name           string
+		stepsCompleted *int32
+		reportTime     *timestamppb.Timestamp
+		group          model.MetricGroup
+		error          *string
+	}{
+		{
+			name:           "training metrics error on null steps",
+			group:          model.TrainingMetricGroup,
+			stepsCompleted: nil,
+			error:          &nullConstraintError,
+		},
+		{
+			name:           "training metrics happy path",
+			stepsCompleted: &step,
+			group:          model.TrainingMetricGroup,
+			reportTime:     reportTime,
+		},
+		{
+			name:           "metrics default report time",
+			group:          model.TrainingMetricGroup,
+			stepsCompleted: &step,
+		},
+		{
+			name:           "profiling metrics persist null steps",
+			group:          model.ProfilingMetricGroups[0],
+			stepsCompleted: nil,
+			reportTime:     reportTime,
+		},
+	}
+	for _, tc := range testCases {
+		trialMetrics := &trialv1.TrialMetrics{
+			TrialId:        int32(trialID),
+			TrialRunId:     0,
+			StepsCompleted: tc.stepsCompleted,
+			ReportTime:     tc.reportTime,
+			Metrics: &commonv1.Metrics{
+				AvgMetrics: metrics,
+			},
+		}
+		_, err := db.addTrialMetrics(ctx, trialMetrics, tc.group)
+		if tc.error != nil {
+			require.ErrorContains(t, err, *tc.error, "test case %s expected error containing %v", tc.name, *tc.error)
+			continue
+		}
+
+		require.NoError(t, err, "test case %s got unexpected error %v", tc.name, err)
+		group := tc.group.ToString()
+		var metrics []*trialv1.MetricsReport
+		var afterStep *int
+
+		if tc.stepsCompleted != nil {
+			step := 0
+			afterStep = &step
+		}
+
+		afterTime := time.Time{}
+		metrics, err = GetMetrics(ctx, trialID, afterStep, &afterTime, 10, &group)
+		require.NoError(t, err)
+		require.Len(t, metrics, 1, "test case %s expected return values of length %v", tc.name, 1)
+
+		metric := metrics[0]
+		require.NotNil(t, metric.EndTime, "test case %s expected non-nil metric end_time")
+
+		if tc.reportTime != nil {
+			// GetMetrics truncates EndTime to milliseconds.
+			expectedTime := timestamppb.New(tc.reportTime.AsTime().Truncate(time.Millisecond))
+			require.Equal(t, expectedTime, metric.EndTime, "test case %s expected end_time of %v, got %v", tc.name, expectedTime, metric.EndTime)
+		}
+
+		if tc.stepsCompleted == nil {
+			require.Nil(t, metric.TotalBatches, "test case %s expected nil TotalBatches", tc.name)
+		} else {
+			require.Equal(t, tc.stepsCompleted, metric.TotalBatches, "test case %s expected total batches %v but got %v", tc.name, *tc.stepsCompleted, metric.TotalBatches)
+		}
+
+		require.Equal(t, string(tc.group), metric.Group, "test case %s did not match expected metrics group", tc.name)
+
 	}
 }
 
@@ -1142,7 +1250,8 @@ func TestBatchesProcessedNRollbacks(t *testing.T) {
 	require.Equal(t, 2, archivedValidations, "trial id %d", tr.ID)
 
 	metricGroup := "generic-golabi"
-	returnedMetrics, err := GetMetrics(ctx, tr.ID, 0, 10, &metricGroup)
+	batches := 0
+	returnedMetrics, err := GetMetrics(ctx, tr.ID, &batches, nil, 10, &metricGroup)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(returnedMetrics))
 }

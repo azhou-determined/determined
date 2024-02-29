@@ -59,7 +59,8 @@ func GetMetricsForTrialSourceInfoQuery(
 			// particular trials.
 			continue
 		}
-		res, err := db.GetMetrics(ctx, val.TrialID, -1, numMetricsLimit, groupName)
+		afterBatch := -1
+		res, err := db.GetMetrics(ctx, val.TrialID, &afterBatch, nil, numMetricsLimit, groupName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get metrics %w", err)
 		}
