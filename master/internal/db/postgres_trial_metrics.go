@@ -295,17 +295,16 @@ func (db *PgDB) AddTrialMetrics(
 }
 
 // GetMetrics returns a subset metrics of the requested type for the given trial ID.
-func GetMetrics(ctx context.Context, trialID, afterBatches, limit int,
+func GetMetrics(ctx context.Context, trialID int, afterBatches *int, afterTime *time.Time, limit int,
 	mGroup *string, // model.MetricGroup,
 ) ([]*trialv1.MetricsReport, error) {
 	var res []*trialv1.MetricsReport
 	pType := customMetricGroupToPartitionType(mGroup)
-	query := Bun().NewSelect().Table("metrics").
+	query := Bun().NewSelect().TableExpr("metrics m").
 		Column("trial_id", "metrics", "total_batches", "archived", "id", "trial_run_id").
 		ColumnExpr("proto_time(end_time) AS end_time").
 		ColumnExpr("metric_group AS group").
 		Where("trial_id = ?", trialID).
-		Where("total_batches > ?", afterBatches).
 		Where("archived = false")
 
 	if mGroup != nil {
@@ -317,8 +316,17 @@ func GetMetrics(ctx context.Context, trialID, afterBatches, limit int,
 		}
 	}
 
+	if afterBatches != nil {
+		query.Where("total_batches > ?", afterBatches).
+			Order("trial_id", "trial_run_id", "total_batches")
+	}
+
+	if afterTime != nil {
+		query.Where("m.end_time > ?", afterTime).
+			Order("trial_id", "trial_run_id", "m.end_time") // xxx: end_time desc?
+	}
+
 	err := query.
-		Order("trial_id", "trial_run_id", "total_batches").
 		Limit(limit).
 		Scan(ctx, &res)
 

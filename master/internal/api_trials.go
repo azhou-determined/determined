@@ -878,9 +878,18 @@ func (a *apiServer) GetMetrics(
 	sendFunc := func(m []*trialv1.MetricsReport) error {
 		return resp.Send(&apiv1.GetMetricsResponse{Metrics: m})
 	}
-	if err := a.streamMetrics(resp.Context(), req.TrialIds, sendFunc,
-		model.MetricGroup(req.Group)); err != nil {
-		return err
+	mGroup := model.MetricGroup(req.Group)
+	switch {
+	case slices.Contains(model.ProfilingMetricGroups, mGroup):
+		if err := a.streamMetricsByTime(resp.Context(), req.TrialIds, sendFunc,
+			model.MetricGroup(req.Group)); err != nil {
+			return err
+		}
+	default:
+		if err := a.streamMetricsByBatches(resp.Context(), req.TrialIds, sendFunc,
+			model.MetricGroup(req.Group)); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -892,7 +901,7 @@ func (a *apiServer) GetTrainingMetrics(
 	sendFunc := func(m []*trialv1.MetricsReport) error {
 		return resp.Send(&apiv1.GetTrainingMetricsResponse{Metrics: m})
 	}
-	if err := a.streamMetrics(resp.Context(), req.TrialIds, sendFunc,
+	if err := a.streamMetricsByBatches(resp.Context(), req.TrialIds, sendFunc,
 		model.TrainingMetricGroup); err != nil {
 		return err
 	}
@@ -906,7 +915,7 @@ func (a *apiServer) GetValidationMetrics(
 	sendFunc := func(m []*trialv1.MetricsReport) error {
 		return resp.Send(&apiv1.GetValidationMetricsResponse{Metrics: m})
 	}
-	if err := a.streamMetrics(resp.Context(), req.TrialIds, sendFunc,
+	if err := a.streamMetricsByBatches(resp.Context(), req.TrialIds, sendFunc,
 		model.ValidationMetricGroup); err != nil {
 		return err
 	}
@@ -914,7 +923,7 @@ func (a *apiServer) GetValidationMetrics(
 	return nil
 }
 
-func (a *apiServer) streamMetrics(ctx context.Context,
+func (a *apiServer) streamMetricsByBatches(ctx context.Context,
 	trialIDs []int32, sendFunc func(m []*trialv1.MetricsReport) error, metricGroup model.MetricGroup,
 ) error {
 	if len(trialIDs) == 0 {
@@ -941,7 +950,7 @@ func (a *apiServer) streamMetrics(ctx context.Context,
 	key := -1
 	mGroup := metricGroup.ToString()
 	for {
-		res, err := db.GetMetrics(ctx, int(trialIDs[trialIDIndex]), key, size, &mGroup)
+		res, err := db.GetMetrics(ctx, int(trialIDs[trialIDIndex]), &key, nil, size, &mGroup)
 		if err != nil {
 			return err
 		}
@@ -962,6 +971,60 @@ func (a *apiServer) streamMetrics(ctx context.Context,
 			}
 
 			key = -1
+		}
+	}
+
+	return nil
+}
+
+func (a *apiServer) streamMetricsByTime(ctx context.Context,
+	trialIDs []int32, sendFunc func(m []*trialv1.MetricsReport) error, metricGroup model.MetricGroup,
+) error {
+	if len(trialIDs) == 0 {
+		return status.Error(codes.InvalidArgument, "must specify at least one trialId")
+	}
+	ids := make(map[int32]bool)
+	for _, id := range trialIDs {
+		if ids[id] {
+			return status.Errorf(codes.InvalidArgument, "duplicate id=%d specified", id)
+		}
+	}
+	slices.Sort(trialIDs)
+
+	for _, trialID := range trialIDs {
+		if err := trials.CanGetTrialsExperimentAndCheckCanDoAction(ctx, int(trialID),
+			experiment.AuthZProvider.Get().CanGetExperimentArtifacts); err != nil {
+			return err
+		}
+	}
+
+	const size = 1000
+
+	trialIDIndex := 0
+	key := time.Time{}
+	mGroup := metricGroup.ToString()
+	for {
+		res, err := db.GetMetrics(ctx, int(trialIDs[trialIDIndex]), nil, &key, size, &mGroup)
+		if err != nil {
+			return err
+		}
+		if len(res) > 0 {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if err := sendFunc(res); err != nil {
+				return err
+			}
+			key = res[len(res)-1].EndTime.AsTime()
+		}
+
+		if len(res) != size {
+			trialIDIndex++
+			if trialIDIndex >= len(trialIDs) {
+				break
+			}
+
+			key = time.Time{}
 		}
 	}
 
