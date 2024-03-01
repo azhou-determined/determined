@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -839,6 +840,15 @@ func TestAddGetTrialMetrics(t *testing.T) {
 
 		require.Equal(t, string(tc.group), metric.Group, "test case %s did not match expected metrics group", tc.name)
 
+		if slices.Contains(model.ProfilingMetricGroups, tc.group) {
+			require.Equal(t, trialMetrics.Metrics.AvgMetrics, metric.Metrics, "test case %s expected metrics %v, got %v", tc.name, trialMetrics.Metrics.AvgMetrics, metric.Metrics)
+		} else {
+			expMetrics := map[string]any{
+				"avg_metrics":   trialMetrics.Metrics.AvgMetrics.AsMap(),
+				"batch_metrics": nil,
+			}
+			require.Equal(t, expMetrics, metric.Metrics.AsMap(), "test case %s expected metrics %v, got %v", tc.name, expMetrics, metric.Metrics.AsMap())
+		}
 	}
 }
 

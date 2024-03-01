@@ -8047,6 +8047,7 @@ class v1MetricsRange(Printable):
 
 class v1MetricsReport(Printable):
     """Metrics report."""
+    totalBatches: "typing.Optional[int]" = None
 
     def __init__(
         self,
@@ -8056,18 +8057,19 @@ class v1MetricsReport(Printable):
         group: str,
         id: int,
         metrics: "typing.Dict[str, typing.Any]",
-        totalBatches: int,
         trialId: int,
         trialRunId: int,
+        totalBatches: "typing.Union[int, None, Unset]" = _unset,
     ):
         self.archived = archived
         self.endTime = endTime
         self.group = group
         self.id = id
         self.metrics = metrics
-        self.totalBatches = totalBatches
         self.trialId = trialId
         self.trialRunId = trialRunId
+        if not isinstance(totalBatches, Unset):
+            self.totalBatches = totalBatches
 
     @classmethod
     def from_json(cls, obj: Json) -> "v1MetricsReport":
@@ -8077,10 +8079,11 @@ class v1MetricsReport(Printable):
             "group": obj["group"],
             "id": obj["id"],
             "metrics": obj["metrics"],
-            "totalBatches": obj["totalBatches"],
             "trialId": obj["trialId"],
             "trialRunId": obj["trialRunId"],
         }
+        if "totalBatches" in obj:
+            kwargs["totalBatches"] = obj["totalBatches"]
         return cls(**kwargs)
 
     def to_json(self, omit_unset: bool = False) -> typing.Dict[str, typing.Any]:
@@ -8090,10 +8093,11 @@ class v1MetricsReport(Printable):
             "group": self.group,
             "id": self.id,
             "metrics": self.metrics,
-            "totalBatches": self.totalBatches,
             "trialId": self.trialId,
             "trialRunId": self.trialRunId,
         }
+        if not omit_unset or "totalBatches" in vars(self):
+            out["totalBatches"] = self.totalBatches
         return out
 
 class v1MetricsWorkload(Printable):

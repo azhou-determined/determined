@@ -961,7 +961,7 @@ func (a *apiServer) streamMetricsByBatches(ctx context.Context,
 			if err := sendFunc(res); err != nil {
 				return err
 			}
-			key = int(res[len(res)-1].TotalBatches)
+			key = int(res[len(res)-1].GetTotalBatches())
 		}
 
 		if len(res) != size {

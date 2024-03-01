@@ -5870,7 +5870,7 @@ export interface V1MetricsReport {
      * @type {number}
      * @memberof V1MetricsReport
      */
-    totalBatches: number;
+    totalBatches?: number;
     /**
      * If metric is archived.
      * @type {boolean}
