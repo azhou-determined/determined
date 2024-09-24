@@ -2689,7 +2689,6 @@ func (a *apiServer) createTrialTx(
 
 	trialModel := model.NewTrial(
 		model.PausedState,
-		model.RequestID{},
 		exp.ID,
 		req.Hparams.AsMap(),
 		nil,

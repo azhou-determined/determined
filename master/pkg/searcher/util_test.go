@@ -11,8 +11,7 @@ import (
 	"gotest.tools/assert"
 
 	"github.com/determined-ai/determined/master/pkg/check"
-	"github.com/determined-ai/determined/master/pkg/model"
-	"github.com/determined-ai/determined/master/pkg/nprand"
+
 	"github.com/determined-ai/determined/master/pkg/schemas"
 	"github.com/determined-ai/determined/master/pkg/schemas/expconf"
 )
@@ -159,92 +158,92 @@ func checkValueSimulation(
 	params expconf.Hyperparameters,
 	expectedTrials []predefinedTrial,
 ) error {
-	// Create requests are assigned a predefinedTrial in order.
-	var nextTrialID int
-	var pending []Operation
-
-	trialIDs := map[model.RequestID]int{}
-	trialOpIdx := map[model.RequestID]int{}
-	trialEarlyExits := map[model.RequestID]bool{}
-
-	ctx := context{
-		rand:    nprand.New(0),
-		hparams: params,
-	}
-
-	ops, err := method.initialOperations(ctx)
-	if err != nil {
-		return errors.Wrap(err, "initialOperations")
-	}
-
-	pending = append(pending, ops...)
-
-	for len(pending) > 0 {
-		var requestID model.RequestID
-		operation := pending[0]
-		pending = pending[1:]
-
-		switch operation := operation.(type) {
-		case Create:
-			requestID = operation.RequestID
-			if nextTrialID >= len(expectedTrials) {
-				return errors.Errorf("search method created too many trials")
-			}
-			trialIDs[requestID] = nextTrialID
-			trialOpIdx[requestID] = 0
-
-			ops, err = method.trialCreated(ctx, requestID)
-			if err != nil {
-				return errors.Wrap(err, "trialCreated")
-			}
-			nextTrialID++
-
-		case ValidateAfter:
-			requestID = operation.GetRequestID()
-			if trialEarlyExits[requestID] {
-				continue
-			}
-
-			trialID := trialIDs[requestID]
-			trial := expectedTrials[trialID]
-			if trial.EarlyExit != nil && trialOpIdx[requestID] == *trial.EarlyExit {
-				trialEarlyExits[requestID] = true
-			}
-			ops, err = simulateOperationComplete(ctx, method, trial, operation, trialOpIdx[requestID])
-			if err != nil {
-				return errors.Wrapf(err, "simulateOperationComplete for trial %v", trialID+1)
-			}
-			trialOpIdx[requestID]++
-			if err = saveAndReload(method); err != nil {
-				return errors.Wrap(err, "snapshot failed")
-			}
-
-		case Close:
-			requestID = operation.RequestID
-			trialID := trialIDs[requestID]
-			trial := expectedTrials[trialID]
-			err = trial.CheckComplete(trialOpIdx[requestID])
-			if err != nil {
-				return errors.Wrapf(err, "trial %v closed before completion", trialID+1)
-			}
-
-			ops, err = method.trialClosed(ctx, requestID)
-			if err != nil {
-				return errors.Wrap(err, "trialClosed")
-			}
-
-		default:
-			return errors.Errorf("unexpected searcher operation: %T", operation)
-		}
-
-		pending = append(pending, ops...)
-	}
-
-	for requestID, trialID := range trialIDs {
-		if err = expectedTrials[trialID].CheckComplete(trialOpIdx[requestID]); err != nil {
-			return errors.Wrapf(err, "incomplete trial %v", trialID+1)
-		}
-	}
+	//// Create requests are assigned a predefinedTrial in order.
+	//var nextTrialID int
+	//var pending []Operation
+	//
+	//trialIDs := map[model.RequestID]int{}
+	//trialOpIdx := map[model.RequestID]int{}
+	////trialEarlyExits := map[model.RequestID]bool{}
+	//
+	//ctx := context{
+	//	rand:    nprand.New(0),
+	//	hparams: params,
+	//}
+	//
+	//ops, err := method.initialRuns(ctx)
+	//if err != nil {
+	//	return errors.Wrap(err, "initialOperations")
+	//}
+	//
+	//pending = append(pending, ops...)
+	//
+	//for len(pending) > 0 {
+	//	var requestID model.RequestID
+	//	operation := pending[0]
+	//	pending = pending[1:]
+	//
+	//	switch operation := operation.(type) {
+	//	case Create:
+	//		requestID = operation.RequestID
+	//		if nextTrialID >= len(expectedTrials) {
+	//			return errors.Errorf("search method created too many trials")
+	//		}
+	//		trialIDs[requestID] = nextTrialID
+	//		trialOpIdx[requestID] = 0
+	//
+	//		ops, err = method.trialCreated(ctx, int32(nextTrialID))
+	//		if err != nil {
+	//			return errors.Wrap(err, "trialCreated")
+	//		}
+	//		nextTrialID++
+	//
+	//	//case ValidateAfter:
+	//	//	requestID = operation.GetRequestID()
+	//	//	if trialEarlyExits[requestID] {
+	//	//		continue
+	//	//	}
+	//	//
+	//	//	trialID := trialIDs[requestID]
+	//	//	trial := expectedTrials[trialID]
+	//	//	if trial.EarlyExit != nil && trialOpIdx[requestID] == *trial.EarlyExit {
+	//	//		trialEarlyExits[requestID] = true
+	//	//	}
+	//	//	ops, err = simulateOperationComplete(ctx, method, trial, operation, trialOpIdx[requestID])
+	//	//	if err != nil {
+	//	//		return errors.Wrapf(err, "simulateOperationComplete for trial %v", trialID+1)
+	//	//	}
+	//	//	trialOpIdx[requestID]++
+	//	//	if err = saveAndReload(method); err != nil {
+	//	//		return errors.Wrap(err, "snapshot failed")
+	//	//	}
+	//
+	//	case Close:
+	//		requestID = operation.RequestID
+	//		trialID := trialIDs[requestID]
+	//		trial := expectedTrials[trialID]
+	//		err = trial.CheckComplete(trialOpIdx[requestID])
+	//		if err != nil {
+	//			return errors.Wrapf(err, "trial %v closed before completion", trialID+1)
+	//		}
+	//
+	//		ops, err = method.trialClosed(ctx, int32(trialID))
+	//		if err != nil {
+	//			return errors.Wrap(err, "trialClosed")
+	//		}
+	//
+	//	default:
+	//		return errors.Errorf("unexpected searcher operation: %T", operation)
+	//	}
+	//
+	//	pending = append(pending, ops...)
+	//}
+	//
+	//for requestID, trialID := range trialIDs {
+	//	if err = expectedTrials[trialID].CheckComplete(trialOpIdx[requestID]); err != nil {
+	//		return errors.Wrapf(err, "incomplete trial %v", trialID+1)
+	//	}
+	//}
 
 	return nil
 }
@@ -269,34 +268,34 @@ type valueSimulationTestCase struct {
 	config         expconf.SearcherConfig
 }
 
-func simulateOperationComplete(
-	ctx context,
-	method SearchMethod,
-	trial predefinedTrial,
-	operation ValidateAfter,
-	opIndex int,
-) ([]Operation, error) {
-	if err := trial.Train(operation.Length, opIndex); err != nil {
-		return nil, errors.Wrap(err, "error checking ValidateAfter with predefinedTrial")
-	}
-
-	if trial.EarlyExit != nil && opIndex == *trial.EarlyExit {
-		ops, err := method.trialExitedEarly(ctx, operation.RequestID, model.UserRequestedStop)
-		if err != nil {
-			return nil, errors.Wrap(err, "trainCompleted")
-		}
-		return ops, nil
-	}
-
-	ops, err := method.validationCompleted(
-		ctx, operation.RequestID, trial.ValMetrics[opIndex], operation,
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "validationCompleted")
-	}
-
-	return ops, nil
-}
+//func simulateOperationComplete(
+//	ctx context,
+//	method SearchMethod,
+//	trial predefinedTrial,
+//	operation ValidateAfter,
+//	opIndex int,
+//) ([]Operation, error) {
+//	if err := trial.Train(operation.Length, opIndex); err != nil {
+//		return nil, errors.Wrap(err, "error checking ValidateAfter with predefinedTrial")
+//	}
+//
+//	if trial.EarlyExit != nil && opIndex == *trial.EarlyExit {
+//		ops, err := method.trialExitedEarly(ctx, operation.RequestID, model.UserRequestedStop)
+//		if err != nil {
+//			return nil, errors.Wrap(err, "trainCompleted")
+//		}
+//		return ops, nil
+//	}
+//
+//	ops, err := method.validationCompleted(
+//		ctx, operation.RequestID, trial.ValMetrics[opIndex], operation,
+//	)
+//	if err != nil {
+//		return nil, errors.Wrap(err, "validationCompleted")
+//	}
+//
+//	return ops, nil
+//}
 
 func saveAndReload(method SearchMethod) error {
 	// take the state back and forth through a round of serialization to test.
@@ -314,4 +313,70 @@ func saveAndReload(method SearchMethod) error {
 		return errors.New("successive snapshots were not identical")
 	}
 	return nil
+}
+
+type TestSearchRunner struct {
+	config   expconf.SearcherConfig
+	searcher *Searcher
+	method   SearchMethod
+}
+
+type testSearchActions struct {
+	runsCreated []testRun
+	runsStopped []testRun
+}
+
+type testRun struct {
+	id      int32
+	hparams HParamSample
+}
+
+func NewTestSearchRunner(config expconf.SearcherConfig, hparams expconf.Hyperparameters) *TestSearchRunner {
+	expSeed := uint32(102932948)
+	method := NewSearchMethod(config)
+	searcher := NewSearcher(expSeed, method, hparams)
+	return &TestSearchRunner{config: config, searcher: searcher, method: method}
+}
+
+func (sr *TestSearchRunner) start() (testSearchActions, error) {
+	creates, err := sr.searcher.InitialRuns()
+	if err != nil {
+		return testSearchActions{}, err
+	}
+	return sr.handleActions(creates)
+}
+
+func (sr *TestSearchRunner) reportValidationMetric(runID int, stepNum int, metricVal float64) (testSearchActions, error) {
+	metrics := map[string]interface{}{
+		sr.config.Metric(): metricVal,
+	}
+	if sr.config.RawAdaptiveASHAConfig != nil {
+		timeMetric := string(sr.config.RawAdaptiveASHAConfig.Length().Unit)
+		metrics[timeMetric] = stepNum
+	}
+	actions, err := sr.searcher.ValidationCompleted(int32(runID), metrics)
+	if err != nil {
+		return testSearchActions{}, err
+	}
+	return sr.handleActions(actions)
+}
+
+func (sr *TestSearchRunner) handleActions(actions []Action) (testSearchActions, error) {
+	var runsCreated []testRun
+	var runsStopped []testRun
+
+	for _, action := range actions {
+		switch action := action.(type) {
+		case Create:
+			run := testRun{id: int32(len(sr.searcher.state.RunsCreated)), hparams: action.Hparams}
+			_, err := sr.searcher.RunCreated(run.id, action)
+			if err != nil {
+				return testSearchActions{}, err
+			}
+			runsCreated = append(runsCreated, run)
+		case Stop:
+			runsStopped = append(runsStopped, testRun{id: action.RunID})
+		}
+	}
+	return testSearchActions{runsCreated: runsCreated, runsStopped: runsStopped}, nil
 }

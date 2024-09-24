@@ -53,26 +53,24 @@ func newSingleSearch(config expconf.SingleConfig) SearchMethod {
 	}
 }
 
-func (s *randomSearch) initialOperations(ctx context) ([]Operation, error) {
-	var ops []Operation
+func (s *randomSearch) initialRuns(ctx context) ([]Action, error) {
+	var actions []Action
 	initialTrials := s.MaxTrials()
 	if s.MaxConcurrentTrials() > 0 {
 		initialTrials = mathx.Min(s.MaxTrials(), s.MaxConcurrentTrials())
 	}
 	for trial := 0; trial < initialTrials; trial++ {
-		create := NewCreate(ctx.rand, sampleAll(ctx.hparams, ctx.rand), model.TrialWorkloadSequencerType)
-		ops = append(ops, create)
-		ops = append(ops, NewValidateAfter(create.RequestID, s.MaxLength().Units))
-		ops = append(ops, NewClose(create.RequestID))
+		create := NewCreate(ctx.rand, sampleAll(ctx.hparams, ctx.rand))
+		actions = append(actions, create)
 		s.CreatedTrials++
 		s.PendingTrials++
 	}
-	return ops, nil
+	return actions, nil
 }
 
 func (s *randomSearch) progress(
-	trialProgress map[model.RequestID]PartialUnits,
-	trialsClosed map[model.RequestID]bool,
+	trialProgress map[int32]PartialUnits,
+	trialsClosed map[int32]bool,
 ) float64 {
 	if s.MaxConcurrentTrials() > 0 && s.PendingTrials > s.MaxConcurrentTrials() {
 		panic("pending trials is greater than max_concurrent_trials")
@@ -98,9 +96,9 @@ func (s *randomSearch) progress(
 
 // trialExitedEarly creates a new trial upon receiving an InvalidHP workload.
 // Otherwise, it does nothing since actions are not taken based on search status.
-func (s *randomSearch) trialExitedEarly(
-	ctx context, requestID model.RequestID, exitedReason model.ExitedReason,
-) ([]Operation, error) {
+func (s *randomSearch) runExitedEarly(
+	ctx context, runID int32, exitedReason model.ExitedReason,
+) ([]Action, error) {
 	s.PendingTrials--
 	if s.SearchMethodType == RandomSearch {
 		if exitedReason == model.InvalidHP || exitedReason == model.InitInvalidHP {
@@ -113,18 +111,18 @@ func (s *randomSearch) trialExitedEarly(
 	return nil, nil
 }
 
-func (s *randomSearch) trialClosed(ctx context, requestID model.RequestID) ([]Operation, error) {
+func (s *randomSearch) runClosed(ctx context, runID int32) ([]Action, error) {
 	s.PendingTrials--
-	var ops []Operation
+	var actions []Action
 	if s.CreatedTrials < s.MaxTrials() {
-		create := NewCreate(ctx.rand, sampleAll(ctx.hparams, ctx.rand), model.TrialWorkloadSequencerType)
-		ops = append(ops, create)
-		ops = append(ops, NewValidateAfter(create.RequestID, s.MaxLength().Units))
-		ops = append(ops, NewClose(create.RequestID))
+		create := NewCreate(ctx.rand, sampleAll(ctx.hparams, ctx.rand))
+		actions = append(actions, create)
+		//actions = append(actions, NewValidateAfter(create.RequestID, s.MaxLength().Units))
+		//actions = append(actions, NewClose(create.RequestID))
 		s.CreatedTrials++
 		s.PendingTrials++
 	}
-	return ops, nil
+	return actions, nil
 }
 
 func (s *randomSearch) Snapshot() (json.RawMessage, error) {

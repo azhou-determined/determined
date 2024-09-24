@@ -41,7 +41,7 @@ func newGridSearch(config expconf.GridConfig) SearchMethod {
 	}
 }
 
-func (s *gridSearch) initialOperations(ctx context) ([]Operation, error) {
+func (s *gridSearch) initialRuns(ctx context) ([]Action, error) {
 	grid := newHyperparameterGrid(ctx.hparams)
 	s.trials = len(grid)
 	s.RemainingTrials = append(s.RemainingTrials, grid...)
@@ -49,22 +49,20 @@ func (s *gridSearch) initialOperations(ctx context) ([]Operation, error) {
 	if s.MaxConcurrentTrials() > 0 {
 		initialTrials = mathx.Min(s.trials, s.MaxConcurrentTrials())
 	}
-	var ops []Operation
+	var actions []Action
 	for trial := 0; trial < initialTrials; trial++ {
 		params := s.RemainingTrials[len(s.RemainingTrials)-1]
 		s.RemainingTrials = s.RemainingTrials[:len(s.RemainingTrials)-1]
-		create := NewCreate(ctx.rand, params, model.TrialWorkloadSequencerType)
-		ops = append(ops, create)
-		ops = append(ops, NewValidateAfter(create.RequestID, s.MaxLength().Units))
-		ops = append(ops, NewClose(create.RequestID))
+		create := NewCreate(ctx.rand, params)
+		actions = append(actions, create)
 		s.PendingTrials++
 	}
-	return ops, nil
+	return actions, nil
 }
 
 func (s *gridSearch) progress(
-	trialProgress map[model.RequestID]PartialUnits,
-	trialsClosed map[model.RequestID]bool,
+	trialProgress map[int32]PartialUnits,
+	trialsClosed map[int32]bool,
 ) float64 {
 	if s.MaxConcurrentTrials() > 0 && s.PendingTrials > s.MaxConcurrentTrials() {
 		panic("pending trials is greater than max_concurrent_trials")
@@ -93,25 +91,26 @@ func (s *gridSearch) progress(
 
 // trialExitedEarly does nothing since grid does not take actions based on
 // search status or progress.
-func (s *gridSearch) trialExitedEarly(
-	ctx context, requestID model.RequestID, exitedReason model.ExitedReason,
-) ([]Operation, error) {
+func (s *gridSearch) runExitedEarly(
+	ctx context, runID int32, exitedReason model.ExitedReason,
+) ([]Action, error) {
 	return nil, nil
 }
 
-func (s *gridSearch) trialClosed(ctx context, _ model.RequestID) ([]Operation, error) {
+func (s *gridSearch) runClosed(ctx context, _ int32) ([]Action, error) {
 	s.PendingTrials--
-	var ops []Operation
+	var actions []Action
 	if len(s.RemainingTrials) > 0 {
 		params := s.RemainingTrials[len(s.RemainingTrials)-1]
 		s.RemainingTrials = s.RemainingTrials[:len(s.RemainingTrials)-1]
-		create := NewCreate(ctx.rand, params, model.TrialWorkloadSequencerType)
-		ops = append(ops, create)
-		ops = append(ops, NewValidateAfter(create.RequestID, s.MaxLength().Units))
-		ops = append(ops, NewClose(create.RequestID))
+		create := NewCreate(ctx.rand, params)
+		actions = append(actions, create)
+		//ops = append(ops, NewValidateAfter(create.RequestID, s.MaxLength().Units))
+		// xxx: figure this out
+		//ops = append(ops, NewClose(create.RequestID))
 		s.PendingTrials++
 	}
-	return ops, nil
+	return actions, nil
 }
 
 func newHyperparameterGrid(params expconf.Hyperparameters) []HParamSample {

@@ -2237,6 +2237,20 @@ var (
             "default": null,
             "minimum": 1
         },
+        "time_metric": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
+        },
+        "max_time": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "default": null
+        },
         "mode": {
             "enum": [
                 null,
@@ -3031,6 +3045,8 @@ var (
         "max_concurrent_trials": true,
         "max_length": true,
         "max_rungs": true,
+        "max_time": true,
+        "time_metric": true,
         "max_trials": true,
         "mode": true,
         "name": true,
