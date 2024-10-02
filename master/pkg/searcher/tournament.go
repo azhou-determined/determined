@@ -12,8 +12,6 @@ import (
 // are sent to the originating search method that created the corresponding operation.
 type (
 	tournamentSearchState struct {
-		SubSearchUnitsCompleted []float64 `json:"sub_search_units_completed"`
-		// xxx: this was changed from TrialTable, check legacy shim
 		RunTable         map[int32]int     `json:"run_table"`
 		SubSearchStates  []json.RawMessage `json:"sub_search_states"`
 		SearchMethodType SearchMethodType  `json:"search_method_type"`
@@ -28,10 +26,9 @@ func newTournamentSearch(mt SearchMethodType, subSearches ...SearchMethod) *tour
 	return &tournamentSearch{
 		subSearches: subSearches,
 		tournamentSearchState: tournamentSearchState{
-			SubSearchUnitsCompleted: make([]float64, len(subSearches)),
-			RunTable:                make(map[int32]int),
-			SubSearchStates:         make([]json.RawMessage, len(subSearches)),
-			SearchMethodType:        mt,
+			RunTable:         make(map[int32]int),
+			SubSearchStates:  make([]json.RawMessage, len(subSearches)),
+			SearchMethodType: mt,
 		},
 	}
 }
