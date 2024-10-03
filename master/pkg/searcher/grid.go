@@ -42,7 +42,7 @@ func newGridSearch(config expconf.GridConfig) SearchMethod {
 }
 
 func (s *gridSearch) initialRuns(ctx context) ([]Action, error) {
-	grid := newHyperparameterGrid(ctx.hparams)
+	grid := NewHyperparameterGrid(ctx.hparams)
 	s.trials = len(grid)
 	s.RemainingTrials = append(s.RemainingTrials, grid...)
 	initialTrials := s.trials
@@ -113,7 +113,7 @@ func (s *gridSearch) runClosed(ctx context, _ int32) ([]Action, error) {
 	return actions, nil
 }
 
-func newHyperparameterGrid(params expconf.Hyperparameters) []HParamSample {
+func NewHyperparameterGrid(params expconf.Hyperparameters) []HParamSample {
 	var axes []gridAxis
 	// Use params.Each for consistent ordering.
 	params.Each(func(name string, param expconf.HyperparameterV0) {
@@ -290,4 +290,8 @@ func (s *gridSearch) Restore(state json.RawMessage) error {
 		return nil
 	}
 	return json.Unmarshal(state, &s.gridSearchState)
+}
+
+func (s *gridSearch) Type() SearchMethodType {
+	return s.SearchMethodType
 }

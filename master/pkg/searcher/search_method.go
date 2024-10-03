@@ -1,7 +1,6 @@
 package searcher
 
 import (
-	"fmt"
 	"github.com/determined-ai/determined/master/pkg/model"
 	"github.com/determined-ai/determined/master/pkg/nprand"
 	"github.com/determined-ai/determined/master/pkg/schemas/expconf"
@@ -39,6 +38,7 @@ type SearchMethod interface {
 	// TODO: refactor as model.Snapshotter interface or something
 	model.Snapshotter
 	expconf.InUnits
+	Type() SearchMethodType
 }
 
 // SearchMethodType is the type of a SearchMethod. It is saved in snapshots to be used

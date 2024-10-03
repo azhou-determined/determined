@@ -68,15 +68,12 @@ func (a *AsyncHalvingConfigV0) SetTimeMetric(val *string) {
 	a.RawTimeMetric = val
 }
 
-func (a AsyncHalvingConfigV0) MaxLength() LengthV0 {
-	if a.RawMaxLength == nil {
-		panic("You must call WithDefaults on AsyncHalvingConfigV0 before .MaxLength")
-	}
-	return *a.RawMaxLength
+func (a AsyncHalvingConfigV0) MaxLength() *LengthV0 {
+	return a.RawMaxLength
 }
 
-func (a *AsyncHalvingConfigV0) SetMaxLength(val LengthV0) {
-	a.RawMaxLength = &val
+func (a *AsyncHalvingConfigV0) SetMaxLength(val *LengthV0) {
+	a.RawMaxLength = val
 }
 
 func (a AsyncHalvingConfigV0) StopOnce() bool {

@@ -147,3 +147,7 @@ func (s *tournamentSearch) markCreates(subSearchID int, runID int32, actions []A
 	}
 	return actions
 }
+
+func (s *tournamentSearch) Type() SearchMethodType {
+	return s.SearchMethodType
+}

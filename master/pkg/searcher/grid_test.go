@@ -31,7 +31,7 @@ func checkGrid(t *testing.T, counts []int) {
 	for _, count := range counts {
 		numTrials *= count
 	}
-	grid := newHyperparameterGrid(generateHyperparameters(counts))
+	grid := NewHyperparameterGrid(generateHyperparameters(counts))
 	assert.Equal(t, len(grid), numTrials)
 }
 
@@ -97,7 +97,7 @@ func TestGrid(t *testing.T) {
 		"1": expconf.Hyperparameter{RawIntHyperparameter: iParam1},
 		"2": expconf.Hyperparameter{RawIntHyperparameter: iParam2},
 	}
-	actual := newHyperparameterGrid(hparams)
+	actual := NewHyperparameterGrid(hparams)
 	expected := []HParamSample{
 		{"1": 0, "2": 0},
 		{"1": 0, "2": 5},
@@ -123,7 +123,7 @@ func TestNestedGrid(t *testing.T) {
 			},
 		},
 	}
-	actual := newHyperparameterGrid(hparams)
+	actual := NewHyperparameterGrid(hparams)
 	expected := []HParamSample{
 		{"1": 0, "2": HParamSample{"3": 0}},
 		{"1": 0, "2": HParamSample{"3": 5}},
@@ -199,7 +199,7 @@ func TestNestedGridFurther(t *testing.T) {
 		`{"a":{"b":{"c1":5,"c2":11}},"constant":2,"f":17,"l":100}`: true,
 	}
 
-	for _, sample := range newHyperparameterGrid(hps) {
+	for _, sample := range NewHyperparameterGrid(hps) {
 		byts, err := json.Marshal(sample)
 		assert.NilError(t, err)
 		result := string(byts)
@@ -228,7 +228,7 @@ func TestGridIntCount(t *testing.T) {
 			},
 		},
 	}
-	actual := newHyperparameterGrid(hparams)
+	actual := NewHyperparameterGrid(hparams)
 	expected := []HParamSample{
 		{"1": 0},
 		{"1": 1},
@@ -247,7 +247,7 @@ func TestGridIntCountNegative(t *testing.T) {
 			},
 		},
 	}
-	actual := newHyperparameterGrid(hparams)
+	actual := NewHyperparameterGrid(hparams)
 	expected := []HParamSample{
 		{"1": -4},
 		{"1": -3},

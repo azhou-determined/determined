@@ -112,7 +112,6 @@ func newAdaptiveASHASearch(config expconf.AdaptiveASHAConfig, smallerIsBetter bo
 	brackets := makeBrackets(config)
 	methods := make([]SearchMethod, 0, len(brackets))
 	for _, bracket := range brackets {
-		fmt.Printf("Bracket: %v\n", bracket)
 		c := expconf.AsyncHalvingConfig{
 			RawNumRungs:            ptrs.Ptr(bracket.numRungs),
 			RawMaxLength:           config.RawMaxLength,

@@ -40,8 +40,6 @@ type (
 	trialMetric struct {
 		RunID  int32                 `json:"run_id"`
 		Metric model.ExtendedFloat64 `json:"metric"`
-		// fields below used by asha.go.
-		Promoted bool `json:"promoted"`
 	}
 	rung struct {
 		UnitsNeeded uint64        `json:"units_needed"`
@@ -200,7 +198,7 @@ func (s *asyncHalvingStoppingSearch) validationCompleted(
 	if !s.SmallerIsBetter {
 		*value *= -1
 	}
-	ops := s.stopTrials(runID, *timeStep, *value)
+	ops := s.stopRun(runID, *timeStep, *value)
 	fmt.Printf("validation complete trial=%d, step=%v, metric=%v. ops=%v\n. runrungs=%v, rungs=%v\n", runID, *timeStep, *value, ops, s.RunRungs, s.Rungs)
 	allTrials := len(s.RunRungs) - s.InvalidRuns
 	if len(ops) > 0 && allTrials < s.MaxTrials() {
@@ -230,7 +228,7 @@ func (s *asyncHalvingStoppingSearch) getMetric(metrics map[string]interface{}) (
 	return ptrs.Ptr(uint64(stepNum)), &searcherMetric, nil
 }
 
-func (s *asyncHalvingStoppingSearch) stopTrials(
+func (s *asyncHalvingStoppingSearch) stopRun(
 	runID int32, timeStep uint64, metric float64,
 ) []Action {
 	rungIndex := s.RunRungs[runID]
@@ -328,4 +326,8 @@ func (s *asyncHalvingStoppingSearch) runExitedEarly(
 		actions = append(actions, create)
 	}
 	return actions, nil
+}
+
+func (s *asyncHalvingStoppingSearch) Type() SearchMethodType {
+	return s.SearchMethodType
 }

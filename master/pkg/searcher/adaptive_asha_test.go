@@ -2,6 +2,7 @@
 package searcher
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/require"
 	"testing"
 
@@ -99,104 +100,12 @@ func TestAdaptiveASHASearcherReproducibility(t *testing.T) {
 	checkReproducibility(t, gen, nil, defaultMetric)
 }
 
-func TestAdaptiveASHAStoppingSearchMethod(t *testing.T) {
-	testCases := []valueSimulationTestCase{
-		{
-			name: "smaller is better",
-			expectedTrials: []predefinedTrial{
-				newConstantPredefinedTrial(toOps("300B 900B"), 0.1),
-				newConstantPredefinedTrial(toOps("300B"), 0.2),
-				newConstantPredefinedTrial(toOps("300B"), 0.3),
-				newConstantPredefinedTrial(toOps("900B"), 0.4),
-				newConstantPredefinedTrial(toOps("900B"), 0.5),
-			},
-			config: expconf.SearcherConfig{
-				RawSmallerIsBetter: ptrs.Ptr(true),
-				RawAdaptiveASHAConfig: &expconf.AdaptiveASHAConfig{
-					RawMaxLength: ptrs.Ptr(expconf.NewLengthInBatches(900)),
-					RawMaxTrials: ptrs.Ptr(5),
-					RawMode:      modePtr(expconf.StandardMode),
-					RawMaxRungs:  ptrs.Ptr(2),
-					RawDivisor:   ptrs.Ptr[float64](3),
-					RawStopOnce:  ptrs.Ptr(true),
-				},
-			},
-		},
-		{
-			name: "early exit -- smaller is better",
-			expectedTrials: []predefinedTrial{
-				newConstantPredefinedTrial(toOps("300B 900B"), 0.1),
-				newEarlyExitPredefinedTrial(toOps("300B"), 0.2),
-				newConstantPredefinedTrial(toOps("300B"), 0.3),
-				newConstantPredefinedTrial(toOps("900B"), 0.4),
-				newConstantPredefinedTrial(toOps("900B"), 0.5),
-			},
-			config: expconf.SearcherConfig{
-				RawSmallerIsBetter: ptrs.Ptr(true),
-				RawAdaptiveASHAConfig: &expconf.AdaptiveASHAConfig{
-					RawMaxLength: ptrs.Ptr(expconf.NewLengthInBatches(900)),
-					RawMaxTrials: ptrs.Ptr(5),
-					RawMode:      modePtr(expconf.StandardMode),
-					RawMaxRungs:  ptrs.Ptr(2),
-					RawDivisor:   ptrs.Ptr[float64](3),
-					RawStopOnce:  ptrs.Ptr(true),
-				},
-			},
-		},
-		{
-			name: "smaller is not better",
-			expectedTrials: []predefinedTrial{
-				newConstantPredefinedTrial(toOps("300B 900B"), 0.1),
-				newConstantPredefinedTrial(toOps("300B 900B"), 0.2),
-				newConstantPredefinedTrial(toOps("300B 900B"), 0.3),
-				newConstantPredefinedTrial(toOps("900B"), 0.4),
-				newConstantPredefinedTrial(toOps("900B"), 0.5),
-			},
-			config: expconf.SearcherConfig{
-				RawSmallerIsBetter: ptrs.Ptr(false),
-				RawAdaptiveASHAConfig: &expconf.AdaptiveASHAConfig{
-					RawMaxLength: ptrs.Ptr(expconf.NewLengthInBatches(900)),
-					RawMaxTrials: ptrs.Ptr(5),
-					RawMode:      modePtr(expconf.StandardMode),
-					RawMaxRungs:  ptrs.Ptr(2),
-					RawDivisor:   ptrs.Ptr[float64](3),
-					RawStopOnce:  ptrs.Ptr(true),
-				},
-			},
-		},
-		{
-			name: "early exit -- smaller is not better",
-			expectedTrials: []predefinedTrial{
-				newConstantPredefinedTrial(toOps("300B 900B"), 0.1),
-				newEarlyExitPredefinedTrial(toOps("300B"), 0.2),
-				newConstantPredefinedTrial(toOps("300B 900B"), 0.3),
-				newConstantPredefinedTrial(toOps("900B"), 0.4),
-				newConstantPredefinedTrial(toOps("900B"), 0.5),
-			},
-			config: expconf.SearcherConfig{
-				RawSmallerIsBetter: ptrs.Ptr(false),
-				RawAdaptiveASHAConfig: &expconf.AdaptiveASHAConfig{
-					RawMaxLength: ptrs.Ptr(expconf.NewLengthInBatches(900)),
-					RawMaxTrials: ptrs.Ptr(5),
-					RawMode:      modePtr(expconf.StandardMode),
-					RawMaxRungs:  ptrs.Ptr(2),
-					RawDivisor:   ptrs.Ptr[float64](3),
-					RawStopOnce:  ptrs.Ptr(true),
-				},
-			},
-		},
-	}
-
-	runValueSimulationTestCases(t, testCases)
-}
-
 // Test an end-to-end flow.
-func TestASHA(t *testing.T) {
+func TestAdaptiveASHA(t *testing.T) {
 	maxConcurrentTrials := 5
 	maxTrials := 10
-	divisor := 2.0
-	maxTime := 1000
-
+	divisor := 3.0
+	maxTime := 900
 	config := expconf.SearcherConfig{
 		RawAdaptiveASHAConfig: &expconf.AdaptiveASHAConfig{
 			RawMaxTime:             &maxTime,
@@ -204,12 +113,13 @@ func TestASHA(t *testing.T) {
 			RawMaxConcurrentTrials: &maxConcurrentTrials,
 			RawMaxTrials:           &maxTrials,
 			RawTimeMetric:          ptrs.Ptr("batches"),
-			RawMode:                modePtr(expconf.ConservativeMode),
+			RawMode:                modePtr(expconf.StandardMode),
 		},
 		RawMetric:          ptrs.Ptr("loss"),
 		RawSmallerIsBetter: ptrs.Ptr(true),
 	}
 	config = schemas.WithDefaults(config)
+
 	intHparam := &expconf.IntHyperparameter{RawMaxval: 10, RawCount: ptrs.Ptr(3)}
 	hparams := expconf.Hyperparameters{
 		"x": expconf.Hyperparameter{RawIntHyperparameter: intHparam},
@@ -218,13 +128,12 @@ func TestASHA(t *testing.T) {
 	// Create a new test searcher and verify brackets/rungs.
 	testSearchRunner := NewTestSearchRunner(config, hparams)
 	search := testSearchRunner.method.(*tournamentSearch)
-	require.Equal(t, 4, len(search.subSearches))
+	require.Equal(t, 2, len(search.subSearches))
 
 	expectedRungs := []*rung{
-		{UnitsNeeded: uint64(125)},
-		{UnitsNeeded: uint64(250)},
-		{UnitsNeeded: uint64(500)},
-		{UnitsNeeded: uint64(1000)},
+		{UnitsNeeded: uint64(100)},
+		{UnitsNeeded: uint64(300)},
+		{UnitsNeeded: uint64(900)},
 	}
 
 	for i, searchMethod := range search.subSearches {
@@ -232,11 +141,33 @@ func TestASHA(t *testing.T) {
 		require.Equal(t, expectedRungs[i:], ashaSearch.Rungs)
 	}
 
-	// Start the search, validate initial trials.
-	runActions, err := testSearchRunner.start()
+	// Start the search, validate correct number of initial runs created across brackets.
+	runsCreated, err := testSearchRunner.start()
 	require.NoError(t, err)
-	require.Equal(t, maxConcurrentTrials, len(runActions.runsCreated))
-	require.Equal(t, 0, len(runActions.runsStopped))
+	require.Equal(t, maxConcurrentTrials, len(runsCreated))
 
-	//testSearchRunner.reportValidationMetric(0, )0
+	bracketRuns := make(map[int][]int32)
+	for rID, sID := range search.RunTable {
+		bracketRuns[sID] = append(bracketRuns[sID], rID)
+	}
+	fmt.Printf("bracket runs %v\n", bracketRuns)
+	require.Equal(t, 3, len(bracketRuns[0]))
+	require.Equal(t, 2, len(bracketRuns[1]))
+
+	// Bracket 1: [100, 300, 900]
+	// Report progressively worse metrics for each run in first rung.
+	// First run should continue.
+	actions, err := testSearchRunner.reportValidationMetric(bracketRuns[0][0], 100, 3.0)
+	require.NoError(t, err)
+	require.Equal(t, 0, len(actions))
+	// Second run should stop and create a new run.
+	actions, err = testSearchRunner.reportValidationMetric(bracketRuns[0][1], 100, 4.0)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(actions))
+
+	// Third run should stop and create a new run.
+	actions, err = testSearchRunner.reportValidationMetric(bracketRuns[0][2], 100, 5.0)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(actions))
+
 }
