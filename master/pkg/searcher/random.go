@@ -69,29 +69,29 @@ func (s *randomSearch) initialRuns(ctx context) ([]Action, error) {
 }
 
 func (s *randomSearch) progress(
-	trialProgress map[int32]PartialUnits,
-	trialsClosed map[int32]bool,
+	runProgress map[int32]float64,
+	runsClosed map[int32]bool,
 ) float64 {
 	if s.MaxConcurrentTrials() > 0 && s.PendingTrials > s.MaxConcurrentTrials() {
 		panic("pending trials is greater than max_concurrent_trials")
 	}
-	// XXX
 	// Progress is calculated as follows:
 	//   - InvalidHP trials contribute 0 since we do not count them against max_trials budget and are
 	//     replaced with another randomly sampled config
 	//   - Other early-exit trials contribute max_length units
 	//   - In progress trials contribute units trained
-	unitsCompleted := 0.
-	// trialProgress records units trained for all trials except for InvalidHP trials.
-	for k, v := range trialProgress {
-		if trialsClosed[k] {
-			unitsCompleted += float64(s.MaxLength().Units)
+	// runsProgress records units trained for all runs except for InvalidHP runs.
+	runProgresses := 0.
+
+	for k, v := range runProgress {
+		if runsClosed[k] {
+			runProgresses += 1.0
 		} else {
-			unitsCompleted += float64(v)
+			runProgresses += v
 		}
 	}
-	unitsExpected := s.MaxLength().Units * uint64(s.MaxTrials())
-	return unitsCompleted / float64(unitsExpected)
+
+	return runProgresses / float64(len(runProgress))
 }
 
 // trialExitedEarly creates a new trial upon receiving an InvalidHP workload.
@@ -117,8 +117,6 @@ func (s *randomSearch) runClosed(ctx context, runID int32) ([]Action, error) {
 	if s.CreatedTrials < s.MaxTrials() {
 		create := NewCreate(ctx.rand, sampleAll(ctx.hparams, ctx.rand))
 		actions = append(actions, create)
-		//actions = append(actions, NewValidateAfter(create.RequestID, s.MaxLength().Units))
-		//actions = append(actions, NewClose(create.RequestID))
 		s.CreatedTrials++
 		s.PendingTrials++
 	}

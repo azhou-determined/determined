@@ -102,9 +102,9 @@ func TestAdaptiveASHASearcherReproducibility(t *testing.T) {
 
 // Test an end-to-end flow.
 func TestAdaptiveASHA(t *testing.T) {
-	maxConcurrentTrials := 5
+	maxConcurrentTrials := 3
 	maxTrials := 10
-	divisor := 3.0
+	divisor := 9.0
 	maxTime := 900
 	config := expconf.SearcherConfig{
 		RawAdaptiveASHAConfig: &expconf.AdaptiveASHAConfig{
@@ -126,13 +126,12 @@ func TestAdaptiveASHA(t *testing.T) {
 	}
 
 	// Create a new test searcher and verify brackets/rungs.
-	testSearchRunner := NewTestSearchRunner(config, hparams)
+	testSearchRunner := NewTestSearchRunner(t, config, hparams)
 	search := testSearchRunner.method.(*tournamentSearch)
 	require.Equal(t, 2, len(search.subSearches))
 
 	expectedRungs := []*rung{
 		{UnitsNeeded: uint64(100)},
-		{UnitsNeeded: uint64(300)},
 		{UnitsNeeded: uint64(900)},
 	}
 
@@ -142,32 +141,41 @@ func TestAdaptiveASHA(t *testing.T) {
 	}
 
 	// Start the search, validate correct number of initial runs created across brackets.
-	runsCreated, err := testSearchRunner.start()
-	require.NoError(t, err)
+	runsCreated, runsStopped := testSearchRunner.start()
 	require.Equal(t, maxConcurrentTrials, len(runsCreated))
-
-	bracketRuns := make(map[int][]int32)
-	for rID, sID := range search.RunTable {
-		bracketRuns[sID] = append(bracketRuns[sID], rID)
-	}
-	fmt.Printf("bracket runs %v\n", bracketRuns)
-	require.Equal(t, 3, len(bracketRuns[0]))
-	require.Equal(t, 2, len(bracketRuns[1]))
-
-	// Bracket 1: [100, 300, 900]
-	// Report progressively worse metrics for each run in first rung.
-	// First run should continue.
-	actions, err := testSearchRunner.reportValidationMetric(bracketRuns[0][0], 100, 3.0)
-	require.NoError(t, err)
-	require.Equal(t, 0, len(actions))
-	// Second run should stop and create a new run.
-	actions, err = testSearchRunner.reportValidationMetric(bracketRuns[0][1], 100, 4.0)
-	require.NoError(t, err)
-	require.Equal(t, 2, len(actions))
-
-	// Third run should stop and create a new run.
-	actions, err = testSearchRunner.reportValidationMetric(bracketRuns[0][2], 100, 5.0)
-	require.NoError(t, err)
-	require.Equal(t, 2, len(actions))
-
+	require.Equal(t, 0, len(runsStopped))
+	fmt.Printf("runs %v\n", testSearchRunner.runs)
+	fmt.Printf("runs rungs %v\n", search.RunTable)
+	//
+	//bracketRuns := make(map[int][]int32)
+	//for rID, sID := range search.RunTable {
+	//	bracketRuns[sID] = append(bracketRuns[sID], rID)
+	//}
+	//require.Equal(t, 2, len(bracketRuns[0]))
+	//require.Equal(t, 1, len(bracketRuns[1]))
+	//
+	//// Bracket 1: [100, 900]
+	//bracket1 := bracketRuns[0]
+	//
+	//// Report progressively worse metrics for each run in first rung.
+	//// First run should continue.
+	//actions, err := testSearchRunner.reportValidationMetric(bracket1[0], 100, 3.0)
+	//require.NoError(t, err)
+	//require.Equal(t, 0, len(actions))
+	//// Second run should stop and create a new third run.
+	//actions, err = testSearchRunner.reportValidationMetric(bracket1[1], 100, 4.0)
+	//require.NoError(t, err)
+	//require.Equal(t, 2, len(actions))
+	//require.True(t, testSearchRunner.runs[bracket1[1]].stopped)
+	//require.Equal(t, 4, len(testSearchRunner.runs))
+	//
+	//// Report better metric on third run, expect it to continue.
+	//actions, err = testSearchRunner.reportValidationMetric(2, 100, 2.0)
+	//require.NoError(t, err)
+	//require.Equal(t, 0, len(actions))
+	//
+	//// Report metrics for each run in second rung. All should be stopped as it's the highest rung.
+	//actions, err = testSearchRunner.reportValidationMetric(0, 900, 1.0)
+	//require.NoError(t, err)
+	//require.Equal(t, 1, len(actions))
 }

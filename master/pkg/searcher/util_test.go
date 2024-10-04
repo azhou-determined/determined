@@ -268,35 +268,6 @@ type valueSimulationTestCase struct {
 	config         expconf.SearcherConfig
 }
 
-//func simulateOperationComplete(
-//	ctx context,
-//	method SearchMethod,
-//	trial predefinedTrial,
-//	operation ValidateAfter,
-//	opIndex int,
-//) ([]Operation, error) {
-//	if err := trial.Train(operation.Length, opIndex); err != nil {
-//		return nil, errors.Wrap(err, "error checking ValidateAfter with predefinedTrial")
-//	}
-//
-//	if trial.EarlyExit != nil && opIndex == *trial.EarlyExit {
-//		ops, err := method.trialExitedEarly(ctx, operation.RequestID, model.UserRequestedStop)
-//		if err != nil {
-//			return nil, errors.Wrap(err, "trainCompleted")
-//		}
-//		return ops, nil
-//	}
-//
-//	ops, err := method.validationCompleted(
-//		ctx, operation.RequestID, trial.ValMetrics[opIndex], operation,
-//	)
-//	if err != nil {
-//		return nil, errors.Wrap(err, "validationCompleted")
-//	}
-//
-//	return ops, nil
-//}
-
 func saveAndReload(method SearchMethod) error {
 	// take the state back and forth through a round of serialization to test.
 	if state, err := method.Snapshot(); err != nil {
@@ -319,50 +290,32 @@ type TestSearchRunner struct {
 	config   expconf.SearcherConfig
 	searcher *Searcher
 	method   SearchMethod
-	actions  []Action
 	runs     map[int32]testRun
-}
-
-type testSearchActions struct {
-	runsCreated []testRun
-	runsStopped []testRun
+	t        *testing.T
 }
 
 type testRun struct {
-	id      int32
-	hparams HParamSample
+	id           int32
+	hparams      HParamSample
+	stopped      bool
+	searchRunner *TestSearchRunner
 }
 
-func NewTestSearchRunner(config expconf.SearcherConfig, hparams expconf.Hyperparameters) *TestSearchRunner {
+func NewTestSearchRunner(t *testing.T, config expconf.SearcherConfig, hparams expconf.Hyperparameters) *TestSearchRunner {
 	expSeed := uint32(102932948)
 	method := NewSearchMethod(config)
 	searcher := NewSearcher(expSeed, method, hparams)
-	return &TestSearchRunner{config: config, searcher: searcher, method: method, runs: make(map[int32]testRun)}
+	return &TestSearchRunner{t: t, config: config, searcher: searcher, method: method, runs: make(map[int32]testRun)}
 }
 
-func (sr *TestSearchRunner) start() ([]testRun, error) {
+func (sr *TestSearchRunner) start() ([]testRun, []testRun) {
 	creates, err := sr.searcher.InitialRuns()
-	if err != nil {
-		return nil, err
-	}
-	err = sr.handleActions(creates)
-	if err != nil {
-		return nil, err
-	}
-	runsCreated := make([]testRun, len(sr.runs))
-	for i, run := range sr.runs {
-		runsCreated[i] = run
-	}
-	return runsCreated, nil
+	assert.NilError(sr.t, err, "error getting initial runs")
+	created, stopped := sr.handleActions(creates)
+	return created, stopped
 }
 
-func (sr *TestSearchRunner) trainAndValidate(maxLength int, valPeriod int) {
-	for i := 0; i < maxLength; i++ {
-
-	}
-}
-
-func (sr *TestSearchRunner) reportValidationMetric(runID int32, stepNum int, metricVal float64) ([]Action, error) {
+func (sr *TestSearchRunner) reportValidationMetric(runID int32, stepNum int, metricVal float64) ([]testRun, []testRun) {
 	metrics := map[string]interface{}{
 		sr.config.Metric(): metricVal,
 	}
@@ -370,35 +323,38 @@ func (sr *TestSearchRunner) reportValidationMetric(runID int32, stepNum int, met
 		timeMetric := string(sr.config.RawAdaptiveASHAConfig.Length().Unit)
 		metrics[timeMetric] = float64(stepNum)
 	}
+	if sr.config.RawAsyncHalvingConfig != nil {
+		timeMetric := string(sr.config.RawAsyncHalvingConfig.Length().Unit)
+		metrics[timeMetric] = float64(stepNum)
+	}
 	actions, err := sr.searcher.ValidationCompleted(runID, metrics)
-	if err != nil {
-		return nil, err
-	}
-	err = sr.handleActions(actions)
-	if err != nil {
-		return nil, err
-	}
-	return actions, nil
+	assert.NilError(sr.t, err, "error completing validation")
+
+	created, stopped := sr.handleActions(actions)
+
+	return created, stopped
 }
 
-func (sr *TestSearchRunner) handleActions(actions []Action) error {
+// run created, run stopped, error
+func (sr *TestSearchRunner) handleActions(actions []Action) ([]testRun, []testRun) {
 	var runsCreated []testRun
 	var runsStopped []testRun
 
 	for _, action := range actions {
-		sr.actions = append(sr.actions, action)
 		switch action := action.(type) {
 		case Create:
-			run := testRun{id: int32(len(sr.searcher.state.RunsCreated)), hparams: action.Hparams}
+			run := testRun{id: int32(len(sr.searcher.state.RunsCreated)), hparams: action.Hparams, searchRunner: sr}
 			_, err := sr.searcher.RunCreated(run.id, action)
-			if err != nil {
-				return err
-			}
+			assert.NilError(sr.t, err, "error creating run")
+
 			sr.runs[run.id] = run
 			runsCreated = append(runsCreated, run)
 		case Stop:
-			runsStopped = append(runsStopped, testRun{id: action.RunID})
+			run := sr.runs[action.RunID]
+			run.stopped = true
+			sr.runs[action.RunID] = run
+			runsStopped = append(runsStopped, run)
 		}
 	}
-	return nil
+	return runsCreated, runsStopped
 }

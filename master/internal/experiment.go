@@ -319,11 +319,12 @@ func (e *internalExperiment) start() error {
 	return nil
 }
 
-func (e *internalExperiment) RunReportProgress(msg experiment.RunReportProgress) error {
+func (e *internalExperiment) RunReportProgress(runID int32, msg experiment.RunReportProgress) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
 	progress := float64(msg.Progress)
+	e.searcher.SetRunProgress(runID, progress)
 
 	if err := e.db.SaveExperimentProgress(e.ID, &progress); err != nil {
 		e.syslog.WithError(err).Error("failed to save experiment progress")

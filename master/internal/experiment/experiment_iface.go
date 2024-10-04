@@ -57,7 +57,7 @@ type (
 
 // Experiment is an interface that represents an experiment.
 type Experiment interface {
-	RunReportProgress(msg RunReportProgress) error
+	RunReportProgress(runID int32, msg RunReportProgress) error
 	RunReportValidation(runID int32, metrics map[string]interface{}) error
 	//TrialGetSearcherState(runID int32) (RunSearcherState, error)
 	UserInitiatedEarlyRunExit(msg UserInitiatedEarlyRunExit) error

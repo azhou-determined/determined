@@ -18,13 +18,13 @@ type PartialUnits float64
 type (
 	// SearcherState encapsulates all persisted searcher state.
 	SearcherState struct {
-		RunsRequested int                    `json:"runs_requested"`
-		RunsCreated   map[int32]bool         `json:"runs_created"`
-		RunsClosed    map[int32]bool         `json:"runs_closed"`
-		Exits         map[int32]bool         `json:"exits"`
-		Cancels       map[int32]bool         `json:"cancels"`
-		Failures      map[int32]bool         `json:"failures"`
-		RunProgress   map[int32]PartialUnits `json:"run_progress"`
+		RunsRequested int               `json:"runs_requested"`
+		RunsCreated   map[int32]bool    `json:"runs_created"`
+		RunsClosed    map[int32]bool    `json:"runs_closed"`
+		Exits         map[int32]bool    `json:"exits"`
+		Cancels       map[int32]bool    `json:"cancels"`
+		Failures      map[int32]bool    `json:"failures"`
+		RunProgress   map[int32]float64 `json:"run_progress"`
 
 		Rand *nprand.State `json:"rand"`
 
@@ -70,7 +70,7 @@ func NewSearcher(seed uint32, method SearchMethod, hparams expconf.Hyperparamete
 			Exits:       map[int32]bool{},
 			Cancels:     map[int32]bool{},
 			Failures:    map[int32]bool{},
-			RunProgress: map[int32]PartialUnits{},
+			RunProgress: map[int32]float64{},
 		},
 	}
 }
@@ -156,8 +156,8 @@ func (s *Searcher) RunExitedEarly(
 	return operations, nil
 }
 
-// SetTrialProgress informs the searcher of the progress of a given trial.
-func (s *Searcher) SetTrialProgress(runID int32, progress PartialUnits) {
+// SetRunProgress informs the searcher of the progress of a given trial.
+func (s *Searcher) SetRunProgress(runID int32, progress float64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

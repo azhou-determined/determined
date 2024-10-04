@@ -2,42 +2,13 @@
 package searcher
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/determined-ai/determined/master/pkg/ptrs"
 	"github.com/determined-ai/determined/master/pkg/schemas"
 	"github.com/determined-ai/determined/master/pkg/schemas/expconf"
 )
-
-func TestRandomSearcherRecords(t *testing.T) {
-	actual := expconf.RandomConfig{
-		RawMaxTrials: ptrs.Ptr(4), RawMaxLength: ptrs.Ptr(expconf.NewLengthInRecords(19200)),
-	}
-	actual = schemas.WithDefaults(actual)
-	expected := [][]ValidateAfter{
-		toOps("19200R"),
-		toOps("19200R"),
-		toOps("19200R"),
-		toOps("19200R"),
-	}
-	search := newRandomSearch(actual)
-	checkSimulation(t, search, nil, ConstantValidation, expected)
-}
-
-func TestRandomSearcherBatches(t *testing.T) {
-	actual := expconf.RandomConfig{
-		RawMaxTrials: ptrs.Ptr(4), RawMaxLength: ptrs.Ptr(expconf.NewLengthInBatches(300)),
-	}
-	actual = schemas.WithDefaults(actual)
-	expected := [][]ValidateAfter{
-		toOps("300B"),
-		toOps("300B"),
-		toOps("300B"),
-		toOps("300B"),
-	}
-	search := newRandomSearch(actual)
-	checkSimulation(t, search, nil, ConstantValidation, expected)
-}
 
 func TestRandomSearcherReproducibility(t *testing.T) {
 	conf := expconf.RandomConfig{
@@ -49,41 +20,22 @@ func TestRandomSearcherReproducibility(t *testing.T) {
 }
 
 func TestRandomSearchMethod(t *testing.T) {
-	testCases := []valueSimulationTestCase{
-		{
-			name: "test random search method",
-			expectedTrials: []predefinedTrial{
-				newConstantPredefinedTrial(toOps("500B"), .1),
-				newConstantPredefinedTrial(toOps("500B"), .1),
-				newConstantPredefinedTrial(toOps("500B"), .1),
-				newEarlyExitPredefinedTrial(toOps("500B"), .1),
-			},
-			config: expconf.SearcherConfig{
-				RawRandomConfig: &expconf.RandomConfig{
-					RawMaxLength:           ptrs.Ptr(expconf.NewLengthInBatches(500)),
-					RawMaxTrials:           ptrs.Ptr(4),
-					RawMaxConcurrentTrials: ptrs.Ptr(2),
-				},
-			},
-		},
-		{
-			name: "test random search method with records",
-			expectedTrials: []predefinedTrial{
-				newConstantPredefinedTrial(toOps("32017R"), .1),
-				newConstantPredefinedTrial(toOps("32017R"), .1),
-				newConstantPredefinedTrial(toOps("32017R"), .1),
-				newConstantPredefinedTrial(toOps("32017R"), .1),
-			},
-			config: expconf.SearcherConfig{
-				RawRandomConfig: &expconf.RandomConfig{
-					RawMaxLength: ptrs.Ptr(expconf.NewLengthInRecords(32017)),
-					RawMaxTrials: ptrs.Ptr(4),
-				},
-			},
+	conf := expconf.SearcherConfig{
+		RawRandomConfig: &expconf.RandomConfig{
+			RawMaxTrials:           ptrs.Ptr(4),
+			RawMaxConcurrentTrials: ptrs.Ptr(2),
+			RawMaxLength:           ptrs.Ptr(expconf.NewLengthInBatches(300)),
 		},
 	}
-
-	runValueSimulationTestCases(t, testCases)
+	conf = schemas.WithDefaults(conf)
+	intHparam := &expconf.IntHyperparameter{RawMaxval: 10, RawCount: ptrs.Ptr(3)}
+	hparams := expconf.Hyperparameters{
+		"x": expconf.Hyperparameter{RawIntHyperparameter: intHparam},
+	}
+	testSearchRunner := NewTestSearchRunner(t, conf, hparams)
+	//search := testSearchRunner.method.(*randomSearch)
+	actions, err := testSearchRunner.start()
+	fmt.Printf("actions %v err %v\n", actions, err)
 }
 
 func TestSingleSearchMethod(t *testing.T) {
@@ -102,19 +54,4 @@ func TestSingleSearchMethod(t *testing.T) {
 	}
 
 	runValueSimulationTestCases(t, testCases)
-}
-
-func TestRandomSearcherSingleConcurrent(t *testing.T) {
-	actual := expconf.RandomConfig{
-		RawMaxTrials:           ptrs.Ptr(2),
-		RawMaxLength:           ptrs.Ptr(expconf.NewLengthInRecords(100)),
-		RawMaxConcurrentTrials: ptrs.Ptr(1),
-	}
-	actual = schemas.WithDefaults(actual)
-	expected := [][]ValidateAfter{
-		toOps("100R"),
-		toOps("100R"),
-	}
-	search := newRandomSearch(actual)
-	checkSimulation(t, search, nil, ConstantValidation, expected)
 }

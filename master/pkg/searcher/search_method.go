@@ -28,8 +28,8 @@ type SearchMethod interface {
 	// runClosed informs the searcher that the trial has been closed as a result of a Close
 	// operation.
 	runClosed(ctx context, runID int32) ([]Action, error)
-	// progress returns experiment progress as a float between 0.0 and 1.0.
-	progress(map[int32]PartialUnits, map[int32]bool) float64
+	// progress returns search progress as a float between 0.0 and 1.0.
+	progress(map[int32]float64, map[int32]bool) float64
 	// runExitedEarly informs the searcher that the run has exited earlier than expected.
 	runExitedEarly(
 		ctx context, runID int32, exitedReason model.ExitedReason,

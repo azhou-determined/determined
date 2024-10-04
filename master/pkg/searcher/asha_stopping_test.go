@@ -3,6 +3,9 @@ package searcher
 
 import (
 	"github.com/determined-ai/determined/master/pkg/model"
+	"github.com/determined-ai/determined/master/pkg/ptrs"
+	"github.com/determined-ai/determined/master/pkg/schemas"
+	"github.com/determined-ai/determined/master/pkg/schemas/expconf"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -61,17 +64,17 @@ func TestMakeRungs(t *testing.T) {
 		},
 		{
 			numRungs:  3,
-			maxLength: 1000,
-			divisor:   float64(5),
+			maxLength: 900,
+			divisor:   float64(3),
 			expectedRungs: []*rung{
 				{
-					UnitsNeeded: 40,
+					UnitsNeeded: 100,
 				},
 				{
-					UnitsNeeded: 200,
+					UnitsNeeded: 300,
 				},
 				{
-					UnitsNeeded: 1000,
+					UnitsNeeded: 900,
 				},
 			},
 		},
@@ -209,7 +212,7 @@ func TestStopTrials(t *testing.T) {
 		runRungs         map[int32]int
 		divisor          float64
 		metric           runMetric
-		expectedOps      []Operation
+		expectedOps      []Action
 		expectedRunRungs map[int32]int
 		expectedRungs    []*rung
 	}{
@@ -255,7 +258,7 @@ func TestStopTrials(t *testing.T) {
 					UnitsNeeded: 9,
 				},
 			},
-			expectedOps: []Operation(nil),
+			expectedOps: []Action(nil),
 		},
 		{
 			name: "second validation better than first",
@@ -311,7 +314,7 @@ func TestStopTrials(t *testing.T) {
 					UnitsNeeded: 9,
 				},
 			},
-			expectedOps: []Operation(nil),
+			expectedOps: []Action(nil),
 		},
 		{
 			name: "second validation worse than first",
@@ -367,7 +370,7 @@ func TestStopTrials(t *testing.T) {
 					UnitsNeeded: 9,
 				},
 			},
-			expectedOps: []Operation{Stop{RunID: 2}},
+			expectedOps: []Action{Stop{RunID: 2}},
 		},
 	}
 
@@ -383,4 +386,80 @@ func TestStopTrials(t *testing.T) {
 		require.Equal(t, c.expectedRungs, searcher.Rungs)
 		require.Equal(t, c.expectedRunRungs, searcher.RunRungs)
 	}
+}
+
+func TestASHAStopping(t *testing.T) {
+	maxConcurrentTrials := 3
+	maxTrials := 10
+	divisor := 3.0
+	maxTime := 900
+	smallerIsBetter := true
+	metric := "loss"
+	config := expconf.AsyncHalvingConfig{
+		RawMaxTime:             &maxTime,
+		RawDivisor:             &divisor,
+		RawNumRungs:            ptrs.Ptr(3),
+		RawMaxConcurrentTrials: &maxConcurrentTrials,
+		RawMaxTrials:           &maxTrials,
+		RawTimeMetric:          ptrs.Ptr(metric),
+	}
+	searcherConfig := expconf.SearcherConfig{
+		RawAsyncHalvingConfig: &config,
+		RawSmallerIsBetter:    ptrs.Ptr(smallerIsBetter),
+		RawMetric:             ptrs.Ptr("loss"),
+	}
+	config = schemas.WithDefaults(config)
+	searcherConfig = schemas.WithDefaults(searcherConfig)
+
+	intHparam := &expconf.IntHyperparameter{RawMaxval: 10, RawCount: ptrs.Ptr(3)}
+	hparams := expconf.Hyperparameters{
+		"x": expconf.Hyperparameter{RawIntHyperparameter: intHparam},
+	}
+
+	// Create a new test searcher and verify brackets/rungs.
+	method := newAsyncHalvingStoppingSearch(config, smallerIsBetter, metric)
+	searcher := NewSearcher(uint32(102932948), method, hparams)
+	testSearchRunner := &TestSearchRunner{t: t, config: searcherConfig, searcher: searcher, method: method, runs: make(map[int32]testRun)}
+	search := testSearchRunner.method.(*asyncHalvingStoppingSearch)
+
+	expectedRungs := []*rung{
+		{UnitsNeeded: uint64(100)},
+		{UnitsNeeded: uint64(300)},
+		{UnitsNeeded: uint64(900)},
+	}
+
+	require.Equal(t, expectedRungs, search.Rungs)
+
+	// Start the search, validate correct number of initial runs created.
+	runsCreated, runsStopped := testSearchRunner.start()
+	require.Equal(t, maxConcurrentTrials, len(runsCreated))
+	require.Equal(t, 0, len(runsStopped))
+
+	startingMetric := 1.0
+
+	// "Train" all runs to the first rung target. Since we're reporting progressively worse metrics,
+	// only the first run should continue to the next rungs.
+	var stoppedRuns []testRun
+
+	for len(runsCreated) > 0 {
+		var created []testRun
+		for _, rc := range runsCreated {
+			startingMetric += 1
+			creates, stops := testSearchRunner.reportValidationMetric(rc.id, 100, startingMetric)
+			stoppedRuns = append(stoppedRuns, stops...)
+			created = append(created, creates...)
+		}
+		runsCreated = created
+	}
+	require.Equal(t, maxTrials-1, len(stoppedRuns))
+
+	// Report metrics for second and third rungs. Run should continue.
+	creates, stops := testSearchRunner.reportValidationMetric(0, 300, startingMetric)
+	require.Equal(t, 0, len(creates))
+	require.Equal(t, 0, len(stops))
+
+	// Report metrics for last rung, run should stop.
+	creates, stops = testSearchRunner.reportValidationMetric(0, 900, startingMetric)
+	require.Equal(t, 0, len(creates))
+	require.Equal(t, 1, len(stops))
 }

@@ -102,7 +102,6 @@ func newAsyncHalvingStoppingSearch(
 	config expconf.AsyncHalvingConfig, smallerIsBetter bool, metric string,
 ) SearchMethod {
 	rungs := makeRungs(config.NumRungs(), config.Divisor(), config.Length().Units)
-	fmt.Printf("rungs: %v, smaller better: %v\n", rungs, smallerIsBetter)
 
 	return &asyncHalvingStoppingSearch{
 		AsyncHalvingConfig: config,
@@ -199,7 +198,7 @@ func (s *asyncHalvingStoppingSearch) validationCompleted(
 		*value *= -1
 	}
 	ops := s.stopRun(runID, *timeStep, *value)
-	fmt.Printf("validation complete trial=%d, step=%v, metric=%v. ops=%v\n. runrungs=%v, rungs=%v\n", runID, *timeStep, *value, ops, s.RunRungs, s.Rungs)
+	fmt.Printf("validation complete trial=%d, step=%v, metric=%v ops=%v runrungs=%v, rungs=%v\n", runID, *timeStep, *value, ops, s.RunRungs, s.Rungs)
 	allTrials := len(s.RunRungs) - s.InvalidRuns
 	if len(ops) > 0 && allTrials < s.MaxTrials() {
 		create := NewCreate(
@@ -270,7 +269,7 @@ func (s *asyncHalvingStoppingSearch) stopRun(
 }
 
 func (s *asyncHalvingStoppingSearch) progress(
-	map[int32]PartialUnits, map[int32]bool,
+	map[int32]float64, map[int32]bool,
 ) float64 {
 	allTrials := len(s.Rungs[0].Metrics)
 	// Give ourselves an overhead of 20% of maxTrials when calculating progress.
@@ -306,12 +305,10 @@ func (s *asyncHalvingStoppingSearch) runExitedEarly(
 		// Add new trial to searcher queue
 		create := NewCreate(
 			ctx.rand, sampleAll(ctx.hparams, ctx.rand))
-		//s.TrialRungs[create.RequestID] = 0
 		actions = append(actions, create)
 		return actions, nil
 	}
 	s.EarlyExitRuns[runID] = true
-	//s.ClosedTrials[requestID] = true
 
 	var actions []Action
 	rungIndex := s.RunRungs[runID]
