@@ -44,7 +44,6 @@ func newSingleSearch(config expconf.SingleConfig) SearchMethod {
 	return &randomSearch{
 		RandomConfig: schemas.WithDefaults(expconf.RandomConfig{
 			RawMaxTrials:           ptrs.Ptr(1),
-			RawMaxLength:           config.MaxLength(),
 			RawMaxConcurrentTrials: ptrs.Ptr(1),
 		}),
 		randomSearchState: randomSearchState{
