@@ -611,33 +611,6 @@ func (e *internalExperiment) restoreTrials() {
 	}
 }
 
-func (e *internalExperiment) handleContinueExperiment(reqID model.RequestID) (*int, bool) {
-	var continueFromTrialID *int
-	// xxx: refactor this and caller
-	//if e.continueTrials {
-	//	switch trial, err := internaldb.TrialByExperimentAndRequestID(context.TODO(), e.ID, reqID); {
-	//	case errors.Is(err, sql.ErrNoRows):
-	//	// Trial doesn't exist, don't do anything
-	//	case err != nil:
-	//		e.updateState(model.StateWithReason{
-	//			State: model.StoppingErrorState,
-	//			InformationalReason: fmt.Sprintf(
-	//				"hp search unable to get trial for the Request ID %v with error %v", reqID, err),
-	//		})
-	//		e.syslog.Error(err)
-	//		return nil, true
-	//	case err == nil:
-	//		if trial.State != model.CompletedState {
-	//			continueFromTrialID = &trial.ID
-	//		} else {
-	//			e.runClosed(reqID, nil)
-	//			return nil, true
-	//		}
-	//	}
-	//}
-	return continueFromTrialID, false
-}
-
 func (e *internalExperiment) handleSearcherActions(
 	actions []searcher.Action, err error,
 ) {
@@ -663,12 +636,6 @@ func (e *internalExperiment) handleSearcherActions(
 		e.syslog.Debugf("handling searcher action: %v", action)
 		switch action := action.(type) {
 		case searcher.Create:
-			// xxx: don't get why this is needed
-			//continueFromTrialID, closed := e.handleContinueExperiment(op.RequestID)
-			//if closed {
-			//	continue
-			//}
-
 			config := schemas.Copy(e.activeConfig)
 			state := experiment.RunSearcherState{Create: action}
 

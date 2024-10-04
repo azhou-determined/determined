@@ -147,35 +147,20 @@ func TestAdaptiveASHA(t *testing.T) {
 	fmt.Printf("runs %v\n", testSearchRunner.runs)
 	fmt.Printf("runs rungs %v\n", search.RunTable)
 	//
-	//bracketRuns := make(map[int][]int32)
-	//for rID, sID := range search.RunTable {
-	//	bracketRuns[sID] = append(bracketRuns[sID], rID)
-	//}
-	//require.Equal(t, 2, len(bracketRuns[0]))
-	//require.Equal(t, 1, len(bracketRuns[1]))
-	//
-	//// Bracket 1: [100, 900]
-	//bracket1 := bracketRuns[0]
-	//
-	//// Report progressively worse metrics for each run in first rung.
-	//// First run should continue.
-	//actions, err := testSearchRunner.reportValidationMetric(bracket1[0], 100, 3.0)
-	//require.NoError(t, err)
-	//require.Equal(t, 0, len(actions))
-	//// Second run should stop and create a new third run.
-	//actions, err = testSearchRunner.reportValidationMetric(bracket1[1], 100, 4.0)
-	//require.NoError(t, err)
-	//require.Equal(t, 2, len(actions))
-	//require.True(t, testSearchRunner.runs[bracket1[1]].stopped)
-	//require.Equal(t, 4, len(testSearchRunner.runs))
-	//
-	//// Report better metric on third run, expect it to continue.
-	//actions, err = testSearchRunner.reportValidationMetric(2, 100, 2.0)
-	//require.NoError(t, err)
-	//require.Equal(t, 0, len(actions))
-	//
-	//// Report metrics for each run in second rung. All should be stopped as it's the highest rung.
-	//actions, err = testSearchRunner.reportValidationMetric(0, 900, 1.0)
-	//require.NoError(t, err)
-	//require.Equal(t, 1, len(actions))
+	bracketRuns := make(map[int][]int32)
+	for rID, sID := range search.RunTable {
+		bracketRuns[sID] = append(bracketRuns[sID], rID)
+	}
+	require.Equal(t, 2, len(bracketRuns[0]))
+	require.Equal(t, 1, len(bracketRuns[1]))
+
+	// Bracket 1: [100, 900]
+	bracket1 := bracketRuns[0]
+
+	// Report progressively worse metrics for each run in first rung.
+	// First run should continue.
+	testSearchRunner.reportValidationMetric(bracket1[0], 100, 3.0)
+	snapshot, err := search.Snapshot()
+	require.NoError(t, err)
+	fmt.Println(string(snapshot))
 }

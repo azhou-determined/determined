@@ -35,16 +35,6 @@ type (
 		State model.StateWithReason
 	}
 
-	// TrialSearcherState is a message sent to an experiment to indicate that a trial has
-	// changed searcher state.
-	//LegacyTrialSearcherState struct {
-	//	Create   searcher.Create
-	//	Op       searcher.ValidateAfter
-	//	Complete bool
-	//	Stop     bool
-	//	Closed   bool
-	//}
-
 	// RunSearcherState is a message sent to an search to indicate that a run has
 	// changed searcher state.
 	RunSearcherState struct {

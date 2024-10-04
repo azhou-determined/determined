@@ -12,14 +12,14 @@ import (
 
 type (
 	// randomSearchState stores the state for random.  Since not all trials are always created at
-	// initialization, we need to track CreatedTrials so we know whether we need to create more
-	// trials when workloads complete so that we reach MaxTrials.  PendingTrials tracks active
+	// initialization, we need to track CreatedRuns so we know whether we need to create more
+	// trials when workloads complete so that we reach MaxTrials.  PendingRuns tracks active
 	// workloads and is used to check max_concurrent_trials for the searcher is respected.
 	// Tracking searcher type on restart gives us the ability to differentiate random searches
 	// in a shim if needed.
 	randomSearchState struct {
-		CreatedTrials    int              `json:"created_trials"`
-		PendingTrials    int              `json:"pending_trials"`
+		CreatedRuns      int              `json:"created_runs"`
+		PendingRuns      int              `json:"pending_runs"`
 		SearchMethodType SearchMethodType `json:"search_method_type"`
 	}
 	// randomSearch corresponds to the standard random search method. Each random trial configuration
@@ -62,8 +62,8 @@ func (s *randomSearch) initialRuns(ctx context) ([]Action, error) {
 	for trial := 0; trial < initialTrials; trial++ {
 		create := NewCreate(ctx.rand, sampleAll(ctx.hparams, ctx.rand))
 		actions = append(actions, create)
-		s.CreatedTrials++
-		s.PendingTrials++
+		s.CreatedRuns++
+		s.PendingRuns++
 	}
 	return actions, nil
 }
@@ -72,7 +72,7 @@ func (s *randomSearch) progress(
 	runProgress map[int32]float64,
 	runsClosed map[int32]bool,
 ) float64 {
-	if s.MaxConcurrentTrials() > 0 && s.PendingTrials > s.MaxConcurrentTrials() {
+	if s.MaxConcurrentTrials() > 0 && s.PendingRuns > s.MaxConcurrentTrials() {
 		panic("pending trials is greater than max_concurrent_trials")
 	}
 	// Progress is calculated as follows:
@@ -99,12 +99,12 @@ func (s *randomSearch) progress(
 func (s *randomSearch) runExitedEarly(
 	ctx context, runID int32, exitedReason model.ExitedReason,
 ) ([]Action, error) {
-	s.PendingTrials--
+	s.PendingRuns--
 	if s.SearchMethodType == RandomSearch {
 		if exitedReason == model.InvalidHP || exitedReason == model.InitInvalidHP {
-			// We decrement CreatedTrials here because this trial is replacing the invalid trial.
+			// We decrement CreatedRuns here because this trial is replacing the invalid trial.
 			// It will be created by trialClosed when the close is received for this trial.
-			s.CreatedTrials--
+			s.CreatedRuns--
 			return nil, nil
 		}
 	}
@@ -112,13 +112,13 @@ func (s *randomSearch) runExitedEarly(
 }
 
 func (s *randomSearch) runClosed(ctx context, runID int32) ([]Action, error) {
-	s.PendingTrials--
+	s.PendingRuns--
 	var actions []Action
-	if s.CreatedTrials < s.MaxTrials() {
+	if s.CreatedRuns < s.MaxTrials() {
 		create := NewCreate(ctx.rand, sampleAll(ctx.hparams, ctx.rand))
 		actions = append(actions, create)
-		s.CreatedTrials++
-		s.PendingTrials++
+		s.CreatedRuns++
+		s.PendingRuns++
 	}
 	return actions, nil
 }

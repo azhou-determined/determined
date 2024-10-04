@@ -12,13 +12,13 @@ import (
 
 type (
 	// gridSearchState stores the state for grid. The state will track the remaining hp settings
-	// that have yet to be created for evaluation.  PendingTrials tracks how many trials have
+	// that have yet to be created for evaluation.  RemainingRuns tracks how many trials have
 	// active workloads and is used to check max_concurrent_trials for the searcher is respected.
 	// Tracking searcher type on restart gives us the ability to differentiate grid searches
 	// in a shim if needed.
 	gridSearchState struct {
-		PendingTrials    int              `json:"pending_trials"`
-		RemainingTrials  []HParamSample   `json:"remaining_trials"`
+		PendingRuns      int              `json:"pending_runs"`
+		RemainingRuns    []HParamSample   `json:"remaining_runs"`
 		SearchMethodType SearchMethodType `json:"search_method_type"`
 	}
 	// gridSearch corresponds to a grid search method. A grid of hyperparameter configs is built. Then,
@@ -36,7 +36,7 @@ func newGridSearch(config expconf.GridConfig) SearchMethod {
 		GridConfig: config,
 		gridSearchState: gridSearchState{
 			SearchMethodType: GridSearch,
-			RemainingTrials:  make([]HParamSample, 0),
+			RemainingRuns:    make([]HParamSample, 0),
 		},
 	}
 }
@@ -44,18 +44,18 @@ func newGridSearch(config expconf.GridConfig) SearchMethod {
 func (s *gridSearch) initialRuns(ctx context) ([]Action, error) {
 	grid := NewHyperparameterGrid(ctx.hparams)
 	s.trials = len(grid)
-	s.RemainingTrials = append(s.RemainingTrials, grid...)
+	s.RemainingRuns = append(s.RemainingRuns, grid...)
 	initialTrials := s.trials
 	if s.MaxConcurrentTrials() > 0 {
 		initialTrials = mathx.Min(s.trials, s.MaxConcurrentTrials())
 	}
 	var actions []Action
 	for trial := 0; trial < initialTrials; trial++ {
-		params := s.RemainingTrials[len(s.RemainingTrials)-1]
-		s.RemainingTrials = s.RemainingTrials[:len(s.RemainingTrials)-1]
+		params := s.RemainingRuns[len(s.RemainingRuns)-1]
+		s.RemainingRuns = s.RemainingRuns[:len(s.RemainingRuns)-1]
 		create := NewCreate(ctx.rand, params)
 		actions = append(actions, create)
-		s.PendingTrials++
+		s.PendingRuns++
 	}
 	return actions, nil
 }
@@ -64,7 +64,7 @@ func (s *gridSearch) progress(
 	runProgress map[int32]float64,
 	runsClosed map[int32]bool,
 ) float64 {
-	if s.MaxConcurrentTrials() > 0 && s.PendingTrials > s.MaxConcurrentTrials() {
+	if s.MaxConcurrentTrials() > 0 && s.PendingRuns > s.MaxConcurrentTrials() {
 		panic("pending trials is greater than max_concurrent_trials")
 	}
 	// Progress is calculated as follows:
@@ -94,17 +94,17 @@ func (s *gridSearch) runExitedEarly(
 }
 
 func (s *gridSearch) runClosed(ctx context, _ int32) ([]Action, error) {
-	s.PendingTrials--
+	s.PendingRuns--
 	var actions []Action
-	if len(s.RemainingTrials) > 0 {
-		params := s.RemainingTrials[len(s.RemainingTrials)-1]
-		s.RemainingTrials = s.RemainingTrials[:len(s.RemainingTrials)-1]
+	if len(s.RemainingRuns) > 0 {
+		params := s.RemainingRuns[len(s.RemainingRuns)-1]
+		s.RemainingRuns = s.RemainingRuns[:len(s.RemainingRuns)-1]
 		create := NewCreate(ctx.rand, params)
 		actions = append(actions, create)
 		//ops = append(ops, NewValidateAfter(create.RequestID, s.MaxLength().Units))
 		// xxx: figure this out
 		//ops = append(ops, NewClose(create.RequestID))
-		s.PendingTrials++
+		s.PendingRuns++
 	}
 	return actions, nil
 }
