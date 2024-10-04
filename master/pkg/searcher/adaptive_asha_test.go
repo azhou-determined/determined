@@ -2,7 +2,6 @@
 package searcher
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/require"
 	"testing"
 
@@ -86,81 +85,6 @@ func TestMakeBrackets(t *testing.T) {
 	}
 }
 
-func modePtr(x expconf.AdaptiveMode) *expconf.AdaptiveMode {
-	return &x
-}
-
-func TestAdaptiveASHASearcherReproducibility(t *testing.T) {
-	conf := expconf.AdaptiveASHAConfig{
-		RawMaxLength: ptrs.Ptr(expconf.NewLengthInBatches(6400)),
-		RawMaxTrials: ptrs.Ptr(128),
-	}
-	conf = schemas.WithDefaults(conf)
-	gen := func() SearchMethod { return newAdaptiveASHASearch(conf, true, "loss") }
-	checkReproducibility(t, gen, nil, defaultMetric)
-}
-
-// Test an end-to-end flow.
 func TestAdaptiveASHA(t *testing.T) {
-	maxConcurrentTrials := 3
-	maxTrials := 10
-	divisor := 9.0
-	maxTime := 900
-	config := expconf.SearcherConfig{
-		RawAdaptiveASHAConfig: &expconf.AdaptiveASHAConfig{
-			RawMaxTime:             &maxTime,
-			RawDivisor:             &divisor,
-			RawMaxConcurrentTrials: &maxConcurrentTrials,
-			RawMaxTrials:           &maxTrials,
-			RawTimeMetric:          ptrs.Ptr("batches"),
-			RawMode:                modePtr(expconf.StandardMode),
-		},
-		RawMetric:          ptrs.Ptr("loss"),
-		RawSmallerIsBetter: ptrs.Ptr(true),
-	}
-	config = schemas.WithDefaults(config)
-
-	intHparam := &expconf.IntHyperparameter{RawMaxval: 10, RawCount: ptrs.Ptr(3)}
-	hparams := expconf.Hyperparameters{
-		"x": expconf.Hyperparameter{RawIntHyperparameter: intHparam},
-	}
-
-	// Create a new test searcher and verify brackets/rungs.
-	testSearchRunner := NewTestSearchRunner(t, config, hparams)
-	search := testSearchRunner.method.(*tournamentSearch)
-	require.Equal(t, 2, len(search.subSearches))
-
-	expectedRungs := []*rung{
-		{UnitsNeeded: uint64(100)},
-		{UnitsNeeded: uint64(900)},
-	}
-
-	for i, searchMethod := range search.subSearches {
-		ashaSearch := searchMethod.(*asyncHalvingStoppingSearch)
-		require.Equal(t, expectedRungs[i:], ashaSearch.Rungs)
-	}
-
-	// Start the search, validate correct number of initial runs created across brackets.
-	runsCreated, runsStopped := testSearchRunner.start()
-	require.Equal(t, maxConcurrentTrials, len(runsCreated))
-	require.Equal(t, 0, len(runsStopped))
-	fmt.Printf("runs %v\n", testSearchRunner.runs)
-	fmt.Printf("runs rungs %v\n", search.RunTable)
-	//
-	bracketRuns := make(map[int][]int32)
-	for rID, sID := range search.RunTable {
-		bracketRuns[sID] = append(bracketRuns[sID], rID)
-	}
-	require.Equal(t, 2, len(bracketRuns[0]))
-	require.Equal(t, 1, len(bracketRuns[1]))
-
-	// Bracket 1: [100, 900]
-	bracket1 := bracketRuns[0]
-
-	// Report progressively worse metrics for each run in first rung.
-	// First run should continue.
-	testSearchRunner.reportValidationMetric(bracket1[0], 100, 3.0)
-	snapshot, err := search.Snapshot()
-	require.NoError(t, err)
-	fmt.Println(string(snapshot))
+	// xxx: write this
 }

@@ -21,7 +21,7 @@ func TestSimulate(t *testing.T) {
 			RawMaxConcurrentTrials: &maxConcurrentTrials,
 			RawMaxTrials:           &maxTrials,
 			RawTimeMetric:          ptrs.Ptr("batches"),
-			RawMode:                modePtr(expconf.StandardMode),
+			RawMode:                expconf.AdaptiveModePtr(expconf.StandardMode),
 		},
 		RawMetric:          ptrs.Ptr("loss"),
 		RawSmallerIsBetter: ptrs.Ptr(true),
@@ -34,5 +34,6 @@ func TestSimulate(t *testing.T) {
 
 	res, err := Simulate(config, hparams)
 	require.NoError(t, err)
-	fmt.Printf("res %v\n", res)
+	// xxx: test this
+	fmt.Println(res)
 }

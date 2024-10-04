@@ -31,23 +31,6 @@ type (
 		SearchMethodState json.RawMessage `json:"search_method_state"`
 	}
 
-	//// LegacySearcherState encapsulates all persisted searcher state.
-	//LegacySearcherState struct {
-	//	TrialsRequested     int                              `json:"trials_requested"`
-	//	TrialsCreated       map[model.RequestID]bool         `json:"trials_created"`
-	//	TrialsClosed        map[model.RequestID]bool         `json:"trials_closed"`
-	//	Exits               map[model.RequestID]bool         `json:"exits"`
-	//	Cancels             map[model.RequestID]bool         `json:"cancels"`
-	//	Failures            map[model.RequestID]bool         `json:"failures"`
-	//	TrialProgress       map[model.RequestID]PartialUnits `json:"trial_progress"`
-	//	Shutdown            bool                             `json:"shutdown"`
-	//	CompletedOperations map[string]ValidateAfter         `json:"completed_operations"`
-	//
-	//	Rand *nprand.State `json:"rand"`
-	//
-	//	SearchMethodState json.RawMessage `json:"search_method_state"`
-	//}
-
 	// Searcher encompasses the state as the searcher progresses using the provided search method.
 	Searcher struct {
 		mu sync.Mutex

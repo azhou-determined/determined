@@ -101,9 +101,6 @@ func (s *gridSearch) runClosed(ctx context, _ int32) ([]Action, error) {
 		s.RemainingRuns = s.RemainingRuns[:len(s.RemainingRuns)-1]
 		create := NewCreate(ctx.rand, params)
 		actions = append(actions, create)
-		//ops = append(ops, NewValidateAfter(create.RequestID, s.MaxLength().Units))
-		// xxx: figure this out
-		//ops = append(ops, NewClose(create.RequestID))
 		s.PendingRuns++
 	}
 	return actions, nil

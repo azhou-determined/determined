@@ -10,8 +10,6 @@ import (
 	"math/rand"
 )
 
-// XXX: rewrite this whole thing
-
 // ValidationFunction calculates the validation metric for the validation step.
 type ValidationFunction func(random *rand.Rand, trialID, idx int) float64
 

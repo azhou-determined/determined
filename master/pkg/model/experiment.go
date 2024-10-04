@@ -567,7 +567,6 @@ func NewTrial(
 		warmStartCheckpointID = &warmStartCheckpoint.ID
 	}
 	return &Trial{
-		// xxx: drop this col?
 		RequestID:             nil,
 		ExperimentID:          experimentID,
 		State:                 state,

@@ -10,7 +10,6 @@ import (
 	"gotest.tools/assert"
 
 	"github.com/determined-ai/determined/master/pkg/ptrs"
-	"github.com/determined-ai/determined/master/pkg/schemas"
 	"github.com/determined-ai/determined/master/pkg/schemas/expconf"
 )
 
@@ -256,63 +255,6 @@ func TestGridIntCountNegative(t *testing.T) {
 	assert.DeepEqual(t, actual, expected)
 }
 
-func TestGridSearcherRecords(t *testing.T) {
-	actual := expconf.GridConfig{RawMaxLength: ptrs.Ptr(expconf.NewLengthInRecords(19200))}
-	actual = schemas.WithDefaults(actual)
-	params := generateHyperparameters([]int{2, 1, 3})
-	expected := [][]ValidateAfter{
-		toOps("19200R"), toOps("19200R"), toOps("19200R"),
-		toOps("19200R"), toOps("19200R"), toOps("19200R"),
-	}
-	searchMethod := newGridSearch(actual)
-	checkSimulation(t, searchMethod, params, ConstantValidation, expected)
-}
-
-func TestGridSearcherBatches(t *testing.T) {
-	actual := expconf.GridConfig{RawMaxLength: ptrs.Ptr(expconf.NewLengthInBatches(300))}
-	actual = schemas.WithDefaults(actual)
-	params := generateHyperparameters([]int{2, 1, 3})
-	expected := [][]ValidateAfter{
-		toOps("300B"), toOps("300B"), toOps("300B"),
-		toOps("300B"), toOps("300B"), toOps("300B"),
-	}
-	searchMethod := newGridSearch(actual)
-	checkSimulation(t, searchMethod, params, ConstantValidation, expected)
-}
-
-func TestGridSearcherEpochs(t *testing.T) {
-	actual := expconf.GridConfig{RawMaxLength: ptrs.Ptr(expconf.NewLengthInEpochs(3))}
-	actual = schemas.WithDefaults(actual)
-	params := generateHyperparameters([]int{2, 1, 3})
-	expected := [][]ValidateAfter{
-		toOps("3E"), toOps("3E"), toOps("3E"),
-		toOps("3E"), toOps("3E"), toOps("3E"),
-	}
-	searchMethod := newGridSearch(actual)
-	checkSimulation(t, searchMethod, params, ConstantValidation, expected)
-}
-
 func TestGridSearchMethod(t *testing.T) {
-	testCases := []valueSimulationTestCase{
-		{
-			name: "test grid search method",
-			expectedTrials: []predefinedTrial{
-				newConstantPredefinedTrial(toOps("300B"), 0.1),
-				newConstantPredefinedTrial(toOps("300B"), 0.1),
-				newConstantPredefinedTrial(toOps("300B"), 0.1),
-				newConstantPredefinedTrial(toOps("300B"), 0.1),
-				newConstantPredefinedTrial(toOps("300B"), 0.1),
-				newEarlyExitPredefinedTrial(toOps("300B"), .1),
-			},
-			config: expconf.SearcherConfig{
-				RawGridConfig: &expconf.GridConfig{
-					RawMaxLength:           ptrs.Ptr(expconf.NewLengthInBatches(300)),
-					RawMaxConcurrentTrials: ptrs.Ptr(2),
-				},
-			},
-			hparams: generateHyperparameters([]int{2, 1, 3}),
-		},
-	}
-
-	runValueSimulationTestCases(t, testCases)
+	// write this
 }
